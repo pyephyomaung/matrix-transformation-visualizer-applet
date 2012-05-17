@@ -15,44 +15,43 @@ import org.math.plot.plots.Plot;
 import org.math.plot.plots.ScatterPlot;
 
 import Jama.EigenvalueDecomposition;
+import Jama.Matrix;
 
 // JMathArray
 import static org.math.array.LinearAlgebra.*;
+
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import javax.swing.JLabel;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JTextArea;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 /**
- * @author pye
- *
- */
-/**
- * @author pye
- *
- */
-/**
- * @author pye
- *
+ * @author Pye Phyo
+ * 
  */
 public class RipMathApplet extends JApplet {
+	private Plot3DPanel inplot;
+	private Plot3DPanel outplot;
+	private CustomizedScatteredPlot scatterPlot_in;
+	private CustomizedScatteredPlot scatterPlot_out;
+	private double[][] data;
+	private Color[] colorMap;
+	private static Parser psr = new Parser();
 	private JTable LinearTransformationMatrix;
-	private JButton button_transform;
 	private double[][] transformationMatrix;
+	private JButton button_transform;
 	private JTextArea textArea_info;
 	private JPanel panel;
 
@@ -61,79 +60,42 @@ public class RipMathApplet extends JApplet {
 	 */
 	public RipMathApplet() {
 		// set layout of the applet
-		getContentPane().setLayout(new MigLayout("", "[][200.00px,grow][grow]", "[200.00,grow,top][200.00]"));
-		
-		// define your data
-		double[] x = increment(-10.0, 0.5, 10.0); 
-		double[] y = increment(-10.0, 0.5, 10.0);
-		double[][] z1 = f(x, y);
-		
-		// testing with 45 degree rotation
-		transformationMatrix = new double[][] {
-				{cos(45), -sin(45), 0},
-				{sin(45), cos(45), 0},
-				{0, 0, 1}
-		};
-		
-		
-		// create your PlotPanel (you can use it as a JPanel) with a legend at SOUTH
-		Plot3DPanel inplot = new Plot3DPanel("SOUTH");
-		Plot3DPanel outplot = new Plot3DPanel("SOUTH");
-		
-		// transform data
-		GridPlot3D gridPlot_in = new GridPlot3D("", Color.BLACK, x, y, z1);
-		double[][] data = gridPlot_in.getData();
-		double[][] transformedData = linearTransform(data, transformationMatrix);
-		
-		// plot the input data
-		Color[] colorMap = mapColor(data);
-		CustomizedScatteredPlot scatterPlot_in = new CustomizedScatteredPlot("scatter", colorMap, data);
-		inplot.addPlot(scatterPlot_in);
-		
-		// plot the transformed (output) data
-		CustomizedScatteredPlot scatterPlot_out = new CustomizedScatteredPlot("transform", colorMap, transformedData);
-		outplot.addPlot(scatterPlot_out);
-				
-		getContentPane().add(inplot, "cell 0 0 2 1,grow");
-		getContentPane().add(outplot, "cell 2 0,grow");
-		
+		getContentPane().setLayout(
+				new MigLayout("", "[][200.00px,grow][grow]",
+						"[200.00,grow,top][200.00]"));
+
 		panel = new JPanel();
 		getContentPane().add(panel, "cell 1 1 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
-		gbl_panel.columnWidths = new int[]{200, 0, 0};
-		gbl_panel.rowHeights = new int[]{0, 0, 0, 24};
-		gbl_panel.columnWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
-		gbl_panel.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_panel.columnWidths = new int[] { 200, 0, 0 };
+		gbl_panel.rowHeights = new int[] { 0, 0, 0, 24 };
+		gbl_panel.columnWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
+		gbl_panel.rowWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
 		panel.setLayout(gbl_panel);
-		
+
 		JComboBox comboBox_Transform = new JComboBox();
-		comboBox_Transform.setModel(new DefaultComboBoxModel(new String[] {"LINEAR", "AFFINE"}));
+		comboBox_Transform.setModel(new DefaultComboBoxModel(new String[] {
+				"LINEAR", "AFFINE" }));
 		GridBagConstraints gbc_comboBox_Transform = new GridBagConstraints();
 		gbc_comboBox_Transform.anchor = GridBagConstraints.NORTHWEST;
 		gbc_comboBox_Transform.insets = new Insets(0, 0, 5, 5);
 		gbc_comboBox_Transform.gridx = 0;
 		gbc_comboBox_Transform.gridy = 0;
 		panel.add(comboBox_Transform, gbc_comboBox_Transform);
+
 		LinearTransformationMatrix = new JTable();
 		LinearTransformationMatrix.setBorder(null);
 		LinearTransformationMatrix.setModel(new DefaultTableModel(
-			new Object[][] {
-				{new Double(1.0), new Double(0.0), new Double(0.0)},
-				{new Double(0.0), new Double(1.0), new Double(0.0)},
-				{new Double(0.0), new Double(0.0), new Double(1.0)},
-			},
-			new String[] {
-				"", "", ""
-			}
-		) {
-			Class[] columnTypes = new Class[] {
-				Double.class, Double.class, Double.class
-			};
+				new Object[][] { { "1", "0", "0" }, { "0", "1", "0" },
+						{ "0", "0", "1" }, }, new String[] { "", "", "" }) {
+			Class[] columnTypes = new Class[] { String.class, String.class,
+					String.class };
+
 			public Class getColumnClass(int columnIndex) {
 				return columnTypes[columnIndex];
 			}
 		});
-		
+
 		GridBagConstraints gbc_LinearTransformationMatrix = new GridBagConstraints();
 		gbc_LinearTransformationMatrix.insets = new Insets(0, 0, 5, 5);
 		gbc_LinearTransformationMatrix.anchor = GridBagConstraints.SOUTHWEST;
@@ -150,10 +112,10 @@ public class RipMathApplet extends JApplet {
 		button_transform.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				UpdateInfo();
+				transform();
 			}
 		});
-		
+
 		textArea_info = new JTextArea();
 		textArea_info.setEditable(false);
 		GridBagConstraints gbc_textArea_info = new GridBagConstraints();
@@ -163,57 +125,139 @@ public class RipMathApplet extends JApplet {
 		gbc_textArea_info.gridx = 1;
 		gbc_textArea_info.gridy = 1;
 		panel.add(textArea_info, gbc_textArea_info);
+
+		// define your data
+		double[] x = increment(-10.0, 0.5, 10.0);
+		double[] y = increment(-10.0, 0.5, 10.0);
+		double[][] z1 = f(x, y);
+
+		// testing with 45 degree rotation
+		transformationMatrix = new double[][] { 
+				{ cos(45), -sin(45), 0 },
+				{ sin(45), cos(45), 0 }, 
+				{ 0, 0, 1 } };
+
+		// create your PlotPanel (you can use it as a JPanel) with a legend at
+		// SOUTH
+		inplot = new Plot3DPanel("SOUTH");
+		outplot = new Plot3DPanel("SOUTH");
+
+		// transform data
+		GridPlot3D gridPlot_in = new GridPlot3D("", Color.BLACK, x, y, z1);
+		data = gridPlot_in.getData();
+		//double[][] transformedData = linearTransform(data, transformationMatrix);
+
+		// plot the input data
+		colorMap = mapColor(data);
+		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
+		inplot.addPlot(scatterPlot_in);
+
+		// plot the transformed (output) data
+		//scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
+			//	transformedData);
+		//outplot.addPlot(scatterPlot_out);
+		transform();
+		
+		getContentPane().add(inplot, "cell 0 0 2 1,grow");
+		getContentPane().add(outplot, "cell 2 0,grow");
 	}
 	
-	
+	public double[] findEigenValue(double[][] matrix)
+	{
+		EigenvalueDecomposition eigenDecomposition = eigen(transformationMatrix);
+		double[][] D = eigenDecomposition.getD().getArray();
+		Set<Double> tmpSet = new HashSet<Double>(); 
+		for(int i = 0; i < D.length; i++)
+		{
+			tmpSet.add(D[i][i]);
+		}
+		
+		Double[] tmpSet_array = tmpSet.toArray(new Double[tmpSet.size()]);
+		double[] result = new double[tmpSet_array.length];
+		for(int k = 0; k < tmpSet_array.length; k++)
+		{
+			result[k] = tmpSet_array[k];
+		}
+		return result;
+	}
+
+	public void transform() {
+		// Update transformation matrix
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				String expression = (String) LinearTransformationMatrix
+						.getValueAt(i, j);
+				double d = parseAndEvaluate(expression);
+				transformationMatrix[i][j] = d;
+			}
+		}
+		
+		// Get transformed points
+		double[][] transformedData = linearTransform(data, transformationMatrix);
+
+		// plot the transformed (output) data
+		outplot.removePlot(scatterPlot_out);	// remove the current output plot
+		scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
+				transformedData);
+		outplot.addPlot(scatterPlot_out);
+		
+		// update the information of the transformation matrix
+		updateInfo();
+	}
+
 	/**
-	 * Update information on determinant, eigen value and rank 
-	 * Called on clicked of button_Transform
+	 * Update information on determinant, eigen value and rank Called on clicked
+	 * of button_Transform
 	 */
-	public void UpdateInfo() {
+	public void updateInfo() {
 		double determinant = det(transformationMatrix);
-		double eigenValue = 0;
+		double[] eigenValues = findEigenValue(transformationMatrix);
 		double rank = rank(transformationMatrix);
-		textArea_info.setText(
-				"Determinant:\t" + determinant + "\n" +
-				"Eigen Value:\t" + eigenValue + "\n" +
-				"Rank:\t" + rank);
+		textArea_info.setText("Determinant:\t" + determinant + "\n"
+				+ "Eigen Value:\t" + print(eigenValues, ", ") + "\n" + "Rank:\t" + rank);
 	}
-	
-	
-	/** 
+
+	public static double parseAndEvaluate(String expression) {
+		String strd = psr.parse(expression);
+		StringTokenizer tokenizer = new StringTokenizer(strd);
+		tokenizer.nextToken();
+		tokenizer.nextToken();
+		Double d = Double.valueOf(tokenizer.nextToken());
+		return d;
+	}
+
+	/**
 	 * Map colors to points
-	 * @param points 
+	 * 
+	 * @param points
 	 * @return an array color mapping to each point
 	 */
-	public static Color[] mapColor(double[][] points)
-	{
+	public static Color[] mapColor(double[][] points) {
 		Color[] colorMap = new Color[points.length];
-		
-		double[] xCoords = getColumnCopy(points, 0);	// get the x coordinates
-		double[] yCoords = getColumnCopy(points, 1);	// get the y coordinates
-		double[] zCoords = getColumnCopy(points, 2);	// get the z coordinates
-		
+
+		double[] xCoords = getColumnCopy(points, 0); // get the x coordinates
+		double[] yCoords = getColumnCopy(points, 1); // get the y coordinates
+		double[] zCoords = getColumnCopy(points, 2); // get the z coordinates
+
 		double xMin = min(xCoords);
 		double xMax = max(xCoords);
 		double xRange = xMax - xMin;
-		
+
 		double yMin = min(yCoords);
 		double yMax = max(yCoords);
 		double yRange = yMax - yMin;
-		
-		//double zMin = min(zCoords);
-		//double zMax = max(zCoords);
-		//double zRange = zMax - zMin;
-		
-		for(int i = 0; i < points.length; i++)
-		{
-			int R = (int) ((255/xRange) * (points[i][0] - xMin));
-			int G = (int) ((255/yRange) * (points[i][1] - yMin));
-			//int B = (int) ((255/zRange) * (points[i][2] - zMin));
+
+		// double zMin = min(zCoords);
+		// double zMax = max(zCoords);
+		// double zRange = zMax - zMin;
+
+		for (int i = 0; i < points.length; i++) {
+			int R = (int) ((255 / xRange) * (points[i][0] - xMin));
+			int G = (int) ((255 / yRange) * (points[i][1] - yMin));
+			// int B = (int) ((255/zRange) * (points[i][2] - zMin));
 			colorMap[i] = new Color(R, G, 128);
 		}
-		
+
 		return colorMap;
 	}
 
@@ -231,30 +275,47 @@ public class RipMathApplet extends JApplet {
 				z[j][i] = f1(x[i], y[j]);
 		return z;
 	}
-	
+
 	// linear transformation
-	public static double[][] linearTransform(double[][] points, double[][] transformationMatrix)
-	{
+	public static double[][] linearTransform(double[][] points,
+			double[][] transformationMatrix) {
 		double[][] result = new double[points.length][3];
-		
-		for(int i = 0; i < points.length; i++)
-		{
+
+		for (int i = 0; i < points.length; i++) {
 			result[i] = times(transformationMatrix, points[i]);
 		}
-		
+
 		return result;
 	}
 	
-	// print matrix
-	public static void print(double[][] matrix)
+	// print array
+	public static String print(double[] array, String separator)
 	{
-		for(double[] row : matrix)
+		String s = "";
+		for(int i = 0; i < array.length; i++)
 		{
-			for(double data : row)
-			{
-				System.out.print(data + " ");
-			}
-			System.out.println();
+			if(i == array.length-1) s += array[i];
+			else s += array[i] + separator;
 		}
+		return s;
+	}
+	
+	public static String print(double[] array)
+	{
+		return print(array, " ");
+	}
+
+	// print matrix
+	public static String print(double[][] matrix) {
+		String s = "";
+		for (double[] row : matrix) 
+		{
+			for (double data : row) 
+			{
+				s += data + " ";
+			}
+			s += "\n";
+		}
+		return s;
 	}
 }
