@@ -10,6 +10,7 @@ import net.miginfocom.swing.MigLayout;
 
 // JMathPlot
 import org.math.plot.Plot3DPanel;
+import org.math.plot.plots.BoxPlot3D;
 import org.math.plot.plots.GridPlot3D;
 import org.math.plot.plots.Plot;
 import org.math.plot.plots.ScatterPlot;
@@ -25,15 +26,22 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JOptionPane;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JTextArea;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.awt.Dialog;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.awt.TrayIcon.MessageType;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.StringTokenizer;
 
@@ -42,6 +50,7 @@ import java.util.StringTokenizer;
  * 
  */
 public class RipMathApplet extends JApplet {
+	private static final double[][] XYdX = null;
 	private Plot3DPanel inplot;
 	private Plot3DPanel outplot;
 	private CustomizedScatteredPlot scatterPlot_in;
@@ -54,6 +63,9 @@ public class RipMathApplet extends JApplet {
 	private JButton button_transform;
 	private JTextArea textArea_info;
 	private JPanel panel;
+	private JComboBox comboBox_surfaces;
+	
+	public String[] surfaces = new String[] {"Plane", "Cube", "Sphere"};
 
 	/**
 	 * Create the applet.
@@ -61,11 +73,34 @@ public class RipMathApplet extends JApplet {
 	public RipMathApplet() {
 		// set layout of the applet
 		getContentPane().setLayout(
-				new MigLayout("", "[][200.00px,grow][grow]",
-						"[200.00,grow,top][200.00]"));
+				new MigLayout("", "[][200.00px,grow][grow]", "[][200.00,grow,top][200.00]"));
+		
+		comboBox_surfaces = new JComboBox();
+		comboBox_surfaces.setModel(new DefaultComboBoxModel(surfaces));
+		comboBox_surfaces.setEditable(false);
+		comboBox_surfaces.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				int choice = comboBox_surfaces.getSelectedIndex();
+				switch(choice)
+				{
+				case 0:	data = getPlane(); break;
+				case 1:	data = getCube(); break;
+				case 2: data = getSphere(); break;
+				}
+				
+				colorMap = mapColor(data);
+				inplot.removeAllPlots();
+				outplot.removeAllPlots();
+				scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
+				inplot.addPlot(scatterPlot_in);
+			}
+		});
+		getContentPane().add(comboBox_surfaces, "cell 1 0");
 
 		panel = new JPanel();
-		getContentPane().add(panel, "cell 1 1 2 1,grow");
+		getContentPane().add(panel, "cell 1 2 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
 		gbl_panel.columnWidths = new int[] { 200, 0, 0 };
 		gbl_panel.rowHeights = new int[] { 0, 0, 0, 24 };
@@ -126,40 +161,95 @@ public class RipMathApplet extends JApplet {
 		gbc_textArea_info.gridy = 1;
 		panel.add(textArea_info, gbc_textArea_info);
 
+		// testing with 45 degree rotation
+		transformationMatrix = new double[][] { 
+				{ 1, 0, 0 },
+				{ 0, 1, 0 }, 
+				{ 0, 0, 1 } };
+
+		// create your PlotPanel (you can use it as a JPanel) with a legend at SOUTH
+		inplot = new Plot3DPanel("SOUTH");
+		outplot = new Plot3DPanel("SOUTH");
+		
+		getContentPane().add(inplot, "cell 0 1 2 1,grow");
+		getContentPane().add(outplot, "cell 2 1,grow");
+		comboBox_surfaces.setSelectedIndex(0);
+	}
+	
+	private double[][] getSphere() {
+		int numPoints = 5000;
+	    double[][] points = new double[numPoints][3];
+	    double inc = Math.PI * (3 - Math.sqrt(5));
+	    double off = (double) 2 / numPoints;
+	    double x, y, z, r, phi;
+	 
+	    for (int k = 0; k < numPoints; k++){
+	        y = k * off - 1 + (off /2);
+	        r = Math.sqrt(1 - y * y);
+	        phi = k * inc;
+	        x = Math.cos(phi) * r;
+	        z = Math.sin(phi) * r;
+	 
+	        points[k] = new double[] {x, y, z};
+	    }
+	 
+	    return points;
+	}
+	
+	public double[][] getPlane()
+	{
 		// define your data
 		double[] x = increment(-10.0, 0.5, 10.0);
 		double[] y = increment(-10.0, 0.5, 10.0);
-		double[][] z1 = f(x, y);
-
-		// testing with 45 degree rotation
-		transformationMatrix = new double[][] { 
-				{ cos(45), -sin(45), 0 },
-				{ sin(45), cos(45), 0 }, 
-				{ 0, 0, 1 } };
-
-		// create your PlotPanel (you can use it as a JPanel) with a legend at
-		// SOUTH
-		inplot = new Plot3DPanel("SOUTH");
-		outplot = new Plot3DPanel("SOUTH");
-
-		// transform data
-		GridPlot3D gridPlot_in = new GridPlot3D("", Color.BLACK, x, y, z1);
-		data = gridPlot_in.getData();
-		//double[][] transformedData = linearTransform(data, transformationMatrix);
-
-		// plot the input data
-		colorMap = mapColor(data);
-		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
-		inplot.addPlot(scatterPlot_in);
-
-		// plot the transformed (output) data
-		//scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
-			//	transformedData);
-		//outplot.addPlot(scatterPlot_out);
-		transform();
-		
-		getContentPane().add(inplot, "cell 0 0 2 1,grow");
-		getContentPane().add(outplot, "cell 2 0,grow");
+		double[][] z = f(x, y);
+				
+		GridPlot3D plane = new GridPlot3D("", Color.BLACK, x, y, z);
+		return plane.getData();
+	}
+	
+	public double[][] getCube()
+	{
+		double[] x = increment(-0.5, 0.05, 0.5);
+	    double[] y = increment(-0.5, 0.05, 0.5);
+	    int sideSize = x.length * y.length;
+	    double[][] points = new double[sideSize * 2 * 6][3];
+	    
+	    int index = 0;
+	    double a, b, c, d;
+	    
+	    a = 0; b = 0; c = 1; d = 0.5;
+	    for(int axis = 0; axis < 3; axis++)
+	    {
+		    for (int i = 0; i < x.length; i++)
+		    {
+				for (int j = 0; j < y.length; j++)
+				{
+					double tmpZ_side1 = -(d + a*x[i] + b*y[j])/c;
+					double tmpZ_side2 = -(d * -1 + a*x[i] + b*y[j])/c;
+					
+					switch(axis)
+					{
+					case 0:
+						points[index] = new double[] {x[i], y[j], tmpZ_side1};
+						index++;
+						points[index] = new double[] {x[i], y[j], tmpZ_side2};
+						index++;
+					case 1:
+						points[index] = new double[] {x[i], tmpZ_side1, y[j]};
+						index++;
+						points[index] = new double[] {x[i], tmpZ_side2, y[j]};
+						index++;
+					case 2:
+						points[index] = new double[] {tmpZ_side1, x[i], y[j]};
+						index++;
+						points[index] = new double[] {tmpZ_side2, x[i], y[j]};
+						index++;
+					}
+				}
+			}
+	    }
+	    
+	    return points;
 	}
 	
 	public double[] findEigenValue(double[][] matrix)
@@ -182,27 +272,35 @@ public class RipMathApplet extends JApplet {
 	}
 
 	public void transform() {
-		// Update transformation matrix
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 3; j++) {
-				String expression = (String) LinearTransformationMatrix
-						.getValueAt(i, j);
-				double d = parseAndEvaluate(expression);
-				transformationMatrix[i][j] = d;
+		try
+		{
+			// Update transformation matrix
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					String expression = (String) LinearTransformationMatrix
+							.getValueAt(i, j);
+					
+						double d = parseAndEvaluate(expression);
+						transformationMatrix[i][j] = d;
+				}
 			}
-		}
-		
-		// Get transformed points
-		double[][] transformedData = linearTransform(data, transformationMatrix);
+			
+			// Get transformed points
+			double[][] transformedData = linearTransform(data, transformationMatrix);
 
-		// plot the transformed (output) data
-		outplot.removePlot(scatterPlot_out);	// remove the current output plot
-		scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
-				transformedData);
-		outplot.addPlot(scatterPlot_out);
-		
-		// update the information of the transformation matrix
-		updateInfo();
+			// plot the transformed (output) data
+			outplot.removeAllPlots();	// remove the current output plot
+			scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
+					transformedData);
+			outplot.addPlot(scatterPlot_out);
+			
+			// update the information of the transformation matrix
+			updateInfo();
+		}
+		catch(NumberFormatException e)
+		{
+			JOptionPane.showMessageDialog(this, "Invalid expression!");
+		}
 	}
 
 	/**
@@ -318,4 +416,5 @@ public class RipMathApplet extends JApplet {
 		}
 		return s;
 	}
+
 }
