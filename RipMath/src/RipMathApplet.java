@@ -7,11 +7,8 @@ import net.miginfocom.swing.MigLayout;
 
 // JMathPlot
 import org.math.plot.Plot3DPanel;
-import org.math.plot.canvas.PlotCanvas;
 import org.math.plot.plots.GridPlot3D;
-
 import delaunay_triangulation.Delaunay_Triangulation;
-import delaunay_triangulation.Point_dt;
 
 // JMathArray
 import static org.math.array.LinearAlgebra.*;
@@ -36,12 +33,18 @@ import java.awt.Dimension;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.text.DecimalFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.StringTokenizer;
+import javax.swing.JCheckBox;
+import java.awt.FlowLayout;
+import javax.swing.JLabel;
+import java.awt.GridLayout;
+import javax.swing.JScrollPane;
 
 /**
- * @author Pye Phyo
+ * @author Pye Phyo Maung
  * 
  */
 public class RipMathApplet extends JApplet {
@@ -61,8 +64,19 @@ public class RipMathApplet extends JApplet {
 	private JComboBox comboBox_surfaces;
 	private JComboBox comboBox_transform;
 	private Delaunay_Triangulation delaunay;
+	private QRDecomposition3x3 qrdecomposition;
+	
+	private static final DecimalFormat fourDecimal = new DecimalFormat("##.0000");
 	
 	public final String[] surfaces = new String[] {"Plane", "Cube", "Sphere"};
+	private JCheckBox chckbxShowQrDecomposition;
+	private JPanel panel_QR;
+	private JTable table_Q;
+	private JLabel label_Q;
+	private JLabel label_R;
+	private JTable table_R;
+	private JPanel panel_Q;
+	private JPanel panel_R;
 
 	/**
 	 * Create the applet.
@@ -97,12 +111,13 @@ public class RipMathApplet extends JApplet {
 		getContentPane().add(comboBox_surfaces, "cell 1 0");
 
 		panel = new JPanel();
-		getContentPane().add(panel, "cell 1 2 2 1,grow");
+		JScrollPane panelScroller = new JScrollPane(panel);
+		getContentPane().add(panelScroller, "cell 1 2 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
 		gbl_panel.columnWidths = new int[] { 200, 0, 0, 0 };
-		gbl_panel.rowHeights = new int[] { 0, 0, 0, 24 };
-		gbl_panel.columnWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
-		gbl_panel.rowWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
+		gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 24 };
+		gbl_panel.columnWeights = new double[] { 1.0, 0.0, 1.0, Double.MIN_VALUE };
+		gbl_panel.rowWeights = new double[] { 0.0, 1.0, 0.0, 1.0, 1.0, Double.MIN_VALUE };
 		panel.setLayout(gbl_panel);
 
 		comboBox_transform = new JComboBox();
@@ -185,17 +200,108 @@ public class RipMathApplet extends JApplet {
 		TransformationMatrixTable.getColumnModel().getColumn(2).setCellRenderer(new ColoredCellRenderer());
 		TransformationMatrixTable.getColumnModel().getColumn(3).setCellRenderer(new ColoredCellRenderer());
 		
+		chckbxShowQrDecomposition = new JCheckBox("Show QR decomposition");
+		chckbxShowQrDecomposition.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(chckbxShowQrDecomposition.isSelected())
+				{
+					panel_QR.setVisible(true);
+				}
+				else
+				{
+					panel_QR.setVisible(false);
+				}
+			}
+		});
+		
+		GridBagConstraints gbc_chckbxShowQrDecomposition = new GridBagConstraints();
+		gbc_chckbxShowQrDecomposition.insets = new Insets(0, 0, 5, 0);
+		gbc_chckbxShowQrDecomposition.gridx = 2;
+		gbc_chckbxShowQrDecomposition.gridy = 0;
+		panel.add(chckbxShowQrDecomposition, gbc_chckbxShowQrDecomposition);
+		
 		GridBagConstraints gbc_TransformationMatrixTable = new GridBagConstraints();
 		gbc_TransformationMatrixTable.insets = new Insets(0, 0, 5, 5);
-		gbc_TransformationMatrixTable.anchor = GridBagConstraints.SOUTHWEST;
+		gbc_TransformationMatrixTable.anchor = GridBagConstraints.NORTHWEST;
 		gbc_TransformationMatrixTable.gridx = 0;
 		gbc_TransformationMatrixTable.gridy = 1;
 		panel.add(TransformationMatrixTable, gbc_TransformationMatrixTable);
 		
+		panel_QR = new JPanel();
+		panel_QR.setVisible(false);
+		GridBagConstraints gbc_panel_QR = new GridBagConstraints();
+		gbc_panel_QR.gridheight = 3;
+		gbc_panel_QR.insets = new Insets(0, 0, 5, 0);
+		gbc_panel_QR.fill = GridBagConstraints.BOTH;
+		gbc_panel_QR.gridx = 2;
+		gbc_panel_QR.gridy = 1;
+		panel.add(panel_QR, gbc_panel_QR);
+		panel_QR.setLayout(new GridLayout(0, 1, 0, 0));
+		
+		panel_Q = new JPanel();
+		panel_QR.add(panel_Q);
+		panel_Q.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		
+		label_Q = new JLabel("Q = ");
+		panel_Q.add(label_Q);
+		
+		table_Q = new JTable();
+		panel_Q.add(table_Q);
+		table_Q.setModel(new DefaultTableModel(
+			new Object[][] {
+				{null, null, null},
+				{null, null, null},
+				{null, null, null},
+			},
+			new String[] {
+				"", "", ""
+			}
+		) {
+			Class[] columnTypes = new Class[] {
+				Double.class, Double.class, Double.class
+			};
+			public Class getColumnClass(int columnIndex) {
+				return columnTypes[columnIndex];
+			}
+		});
+		table_Q.getColumnModel().getColumn(0).setPreferredWidth(45);
+		table_Q.getColumnModel().getColumn(1).setPreferredWidth(45);
+		table_Q.getColumnModel().getColumn(2).setPreferredWidth(45);
+		
+		panel_R = new JPanel();
+		panel_QR.add(panel_R);
+		
+		label_R = new JLabel("R = ");
+		panel_R.add(label_R);
+		
+		table_R = new JTable();
+		table_R.setModel(new DefaultTableModel(
+			new Object[][] {
+				{null, null, null},
+				{null, null, null},
+				{null, null, null},
+			},
+			new String[] {
+				"", "", ""
+			}
+		) {
+			Class[] columnTypes = new Class[] {
+				Double.class, Double.class, Double.class
+			};
+			public Class getColumnClass(int columnIndex) {
+				return columnTypes[columnIndex];
+			}
+		});
+		table_R.getColumnModel().getColumn(0).setPreferredWidth(45);
+		table_R.getColumnModel().getColumn(1).setPreferredWidth(45);
+		table_R.getColumnModel().getColumn(2).setPreferredWidth(45);
+		panel_R.add(table_R);
+		
 		// initialize gui
 		button_transform = new JButton("Transform");
 		GridBagConstraints gbc_button_transform = new GridBagConstraints();
-		gbc_button_transform.insets = new Insets(0, 0, 0, 5);
+		gbc_button_transform.anchor = GridBagConstraints.WEST;
+		gbc_button_transform.insets = new Insets(0, 0, 5, 5);
 		gbc_button_transform.gridx = 0;
 		gbc_button_transform.gridy = 2;
 		panel.add(button_transform, gbc_button_transform);
@@ -203,10 +309,22 @@ public class RipMathApplet extends JApplet {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				transform();
+				
+				double[][] matrix = new double[3][3];
+				for(int i = 0; i < 3; i++)
+				{
+					for(int j = 0; j < 3 ; j++)
+					{
+						matrix[i][j] = transformationMatrix[i][j];
+					}
+				}
+				qrdecomposition = new QRDecomposition3x3(matrix);				
+				updateInfo();
 			}
 		});
 
 		textArea_info = new JTextArea();
+		textArea_info.setOpaque(false);
 		textArea_info.setEditable(false);
 		GridBagConstraints gbc_textArea_info = new GridBagConstraints();
 		gbc_textArea_info.fill = GridBagConstraints.BOTH;
@@ -383,9 +501,6 @@ public class RipMathApplet extends JApplet {
 			scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
 					transformedData);
 			outplot.addPlot(scatterPlot_out);
-			
-			// update the information of the transformation matrix
-			updateInfo();
 		}
 		catch(NumberFormatException e)
 		{
@@ -409,11 +524,42 @@ public class RipMathApplet extends JApplet {
 	 * of button_Transform
 	 */
 	public void updateInfo() {
-		double determinant = det(transformationMatrix);
-		double[] eigenValues = findEigenValue(transformationMatrix);
-		double rank = rank(transformationMatrix);
-		textArea_info.setText("Determinant:\t" + determinant + "\n"
-				+ "Eigen Value:\t" + print(eigenValues, ", ") + "\n" + "Rank:\t" + rank);
+		double[][] tmpMatrix;
+		
+		// linear
+		if(this.comboBox_transform.getSelectedIndex() == 0)
+		{
+			tmpMatrix = new double[3][3];
+			for(int i = 0; i < 3; i++)
+			{
+				for(int j = 0; j < 3; j++)
+				{
+					tmpMatrix[i][j] = transformationMatrix[i][j];
+				}
+			}
+		}
+		// affine
+		else
+		{
+			tmpMatrix = transformationMatrix;
+		}
+		
+		double determinant = det(tmpMatrix);
+		double[] eigenValues = findEigenValue(tmpMatrix);
+		double rank = rank(tmpMatrix);
+		textArea_info.setText("Determinant:\t" + fourDecimal.format(determinant) + "\n"
+				+ "Eigen Value:\t" + print(eigenValues, ", ") + "\n" 
+				+ "Rank:\t" + rank);
+		
+		// update Q and R matrices
+		for(int i = 0; i < 3; i++)
+		{
+			for(int j = 0; j < 3; j++)
+			{
+				table_Q.setValueAt(qrdecomposition.Q[i][j], i, j);
+				table_R.setValueAt(qrdecomposition.R[i][j], i, j);
+			}
+		}
 	}
 
 	public static double parseAndEvaluate(String expression) {
@@ -431,9 +577,21 @@ public class RipMathApplet extends JApplet {
 	 * @param points
 	 * @return an array color mapping to each point
 	 */
-	public static Color[] mapColor(double[][] points) {
+	private Color[] mapColor(double[][] points) {
 		Color[] colorMap = new Color[points.length];
 
+		if(this.comboBox_surfaces.getSelectedIndex() == 1)
+		{
+			int d = points.length / 6;
+			for(int i = 0; i < points.length; i++)
+			{
+				if(i < (d * 2)) colorMap[i] = Color.BLUE;
+				else if(i < (d * 4)) colorMap[i] = Color.RED;
+				
+			}
+			return colorMap;
+		}
+		
 		double[] xCoords = getColumnCopy(points, 0); // get the x coordinates
 		double[] yCoords = getColumnCopy(points, 1); // get the y coordinates
 		//double[] zCoords = getColumnCopy(points, 2); // get the z coordinates
@@ -482,7 +640,7 @@ public class RipMathApplet extends JApplet {
 		for(int i = 0; i < array.length; i++)
 		{
 			if(i == array.length-1) s += array[i];
-			else s += array[i] + separator;
+			else s += fourDecimal.format(array[i]) + separator;
 		}
 		return s;
 	}
@@ -505,5 +663,4 @@ public class RipMathApplet extends JApplet {
 		}
 		return s;
 	}
-
 }
