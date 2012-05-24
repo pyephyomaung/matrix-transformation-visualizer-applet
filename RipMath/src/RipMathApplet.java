@@ -7,6 +7,10 @@ import net.miginfocom.swing.MigLayout;
 
 // JMathPlot
 import org.math.plot.Plot3DPanel;
+import org.math.plot.canvas.PlotCanvas;
+import org.math.plot.plotObjects.Axis;
+import org.math.plot.plotObjects.Base;
+import org.math.plot.plotObjects.BaseLine;
 import org.math.plot.plots.GridPlot3D;
 import delaunay_triangulation.Delaunay_Triangulation;
 
@@ -67,6 +71,8 @@ public class RipMathApplet extends JApplet {
 	private QRDecomposition3x3 qrdecomposition;
 	
 	private static final DecimalFormat fourDecimal = new DecimalFormat("##.0000");
+	private double[] inMinBounds;
+	private double[] inMaxBounds;
 	
 	public final String[] surfaces = new String[] {"Plane", "Cube", "Sphere"};
 	private JCheckBox chckbxShowQrDecomposition;
@@ -101,13 +107,13 @@ public class RipMathApplet extends JApplet {
 				case 2: data = generateSphere(); break;
 				}
 				
-				colorMap = mapColor(data);
-				inplot.removeAllPlots();
+				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
 				outplot.removeAllPlots();
-				scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
-				inplot.addPlot(scatterPlot_in);
+				
+				createInplot();
 			}
 		});
+		
 		getContentPane().add(comboBox_surfaces, "cell 1 0");
 
 		panel = new JPanel();
@@ -309,7 +315,9 @@ public class RipMathApplet extends JApplet {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				transform();
+				syncAxesBounds();
 				
+				// QR decomposition
 				double[][] matrix = new double[3][3];
 				for(int i = 0; i < 3; i++)
 				{
@@ -341,16 +349,9 @@ public class RipMathApplet extends JApplet {
 				{ 0, 0, 1, 0 },
 				{ 0, 0, 0, 1 }};
 
-		// create your PlotPanel (you can use it as a JPanel) with a legend at SOUTH
-		inplot = new Plot3DPanel("SOUTH");
-		inplot.setPreferredSize(new Dimension(300,350));
-		inplot.getAxis(0).setColor(Color.BLUE);
-		inplot.getAxis(1).setColor(Color.RED);
-		
-		outplot = new Plot3DPanel("SOUTH");
-		outplot.setPreferredSize(new Dimension(300,350));
-		outplot.getAxis(0).setColor(Color.BLUE);
-		outplot.getAxis(1).setColor(Color.RED);
+		// create your PlotPanel (you can use it as a JPanel)
+		initInplot();
+		initOutplot();
 		
 		delaunay = new Delaunay_Triangulation();
 		
@@ -359,6 +360,100 @@ public class RipMathApplet extends JApplet {
 		comboBox_surfaces.setSelectedIndex(0);
 	}
 	
+	
+	/**
+	 * Initialize outplot
+	 */
+	private void initOutplot()
+	{
+		outplot = new Plot3DPanel();
+		outplot.setPreferredSize(new Dimension(400,420));
+		outplot.plotCanvas.getGrid().setVisible(false);
+		outplot.removeLegend();
+	}
+	
+	
+	/**
+	 * Initialize inplot
+	 */
+	private void initInplot()
+	{
+		inplot = new Plot3DPanel();
+		inplot.setPreferredSize(new Dimension(400,420));
+		inplot.plotCanvas.getGrid().setVisible(false);
+		inplot.removeLegend();
+	}
+	
+	/**
+	 * Create inplot and add axes
+	 */
+	private void createInplot()
+	{
+		inplot.removeAllPlots();
+		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
+		inplot.addPlot(scatterPlot_in);
+		
+		// create axes
+		inMinBounds = inplot.plotCanvas.base.getMinBounds();
+		inMaxBounds = inplot.plotCanvas.base.getMaxBounds();
+		inplot.addLinePlot("", Color.BLUE,new double[][] {{inMinBounds[0],0,0},{inMaxBounds[0],0,0}});
+		inplot.addLinePlot("", Color.RED,new double[][] {{0,inMinBounds[1],0},{0,inMaxBounds[1],0}});
+		inplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,inMinBounds[2]},{0,0,inMaxBounds[2]}});
+	}
+	
+	/**
+	 * Synchronize Axes of inplot and outplot
+	 */
+	public void syncAxesBounds()
+	{
+		// draw axes for outplot
+		double[] outMinBounds = outplot.plotCanvas.base.getMinBounds();
+		double[] outMaxBounds = outplot.plotCanvas.base.getMaxBounds();
+		
+		try
+		{
+			inplot.removePlot(3);
+			inplot.removePlot(2);
+			inplot.removePlot(1);
+		}
+		catch(Exception e)
+		{
+			System.out.println(e.toString());
+		}
+		
+		for(int i = 0; i < 3; i++)
+		{
+			double min = min(inMinBounds[i], outMinBounds[i]);
+			double max = max(inMaxBounds[i], outMaxBounds[i]);
+			
+			switch(i)
+			{
+			case 0:
+				outplot.addLinePlot("", Color.BLUE,new double[][] {{min,0,0},{max,0,0}});
+				inplot.addLinePlot("", Color.BLUE,new double[][] {{min,0,0},{max,0,0}});
+				break;
+			case 1:
+				outplot.addLinePlot("", Color.RED,new double[][] {{0,min,0},{0,max,0}});
+				inplot.addLinePlot("", Color.RED,new double[][] {{0,min,0},{0,max,0}});
+				break;
+			case 2:
+				outplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,min},{0,0,max}});
+				inplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,min},{0,0,max}});
+				break;
+			}
+		}
+		
+		// lock the bounds of inplot and outplot so the views are synchronized
+		inplot.setFixedBounds(inMinBounds, inMaxBounds);
+		outplot.setFixedBounds(inMinBounds, inMaxBounds);
+	}
+	
+	/**
+	 * Custom renderer for cells in table
+	 * Uneditable cells are blacked out.
+	 * @author pye
+	 *
+	 */
 	static class ColoredCellRenderer extends DefaultTableCellRenderer {
 		@Override
 		public Component getTableCellRendererComponent(JTable table,
@@ -375,8 +470,13 @@ public class RipMathApplet extends JApplet {
 		}
 	}
 	
+	
+	/**
+	 * @return uniformly distributed scattered points of 
+	 * a sphere of radius 1 centered at origin
+	 */
 	private double[][] generateSphere() {	
-		int numPoints = 5000;
+		int numPoints = 5000;	// number of scattered points
 	    double[][] points = new double[numPoints][3];
 	    double inc = Math.PI * (3 - Math.sqrt(5));
 	    double off = (double) 2 / numPoints;
@@ -395,6 +495,9 @@ public class RipMathApplet extends JApplet {
 	    return points;
 	}
 	
+	/**
+	 * @return scattered points of a plane defined in f
+	 */
 	public double[][] generatePlane()
 	{
 		// define your data
@@ -406,12 +509,16 @@ public class RipMathApplet extends JApplet {
 		return plane.getData();
 	}
 	
+	/**
+	 * @return scattered points of a cube
+	 */
 	public double[][] generateCube()
 	{
 		double[] x = increment(-0.5, 0.05, 0.5);
 	    double[] y = increment(-0.5, 0.05, 0.5);
 	    int sideSize = x.length * y.length;
 	    double[][] points = new double[sideSize * 2 * 6][3];
+	    colorMap = new Color[points.length];
 	    
 	    int index = 0;
 	    double a, b, c, d;
@@ -430,18 +537,24 @@ public class RipMathApplet extends JApplet {
 					{
 					case 0:
 						points[index] = new double[] {x[i], y[j], tmpZ_side1};
+						colorMap[index] = Color.BLUE; 
 						index++;
 						points[index] = new double[] {x[i], y[j], tmpZ_side2};
+						colorMap[index] = Color.GREEN;
 						index++;
 					case 1:
 						points[index] = new double[] {x[i], tmpZ_side1, y[j]};
+						colorMap[index] = Color.MAGENTA;
 						index++;
 						points[index] = new double[] {x[i], tmpZ_side2, y[j]};
+						colorMap[index] = Color.ORANGE;
 						index++;
 					case 2:
 						points[index] = new double[] {tmpZ_side1, x[i], y[j]};
+						colorMap[index] = Color.PINK;
 						index++;
 						points[index] = new double[] {tmpZ_side2, x[i], y[j]};
+						colorMap[index] = Color.RED;
 						index++;
 					}
 				}
@@ -451,6 +564,11 @@ public class RipMathApplet extends JApplet {
 	    return points;
 	}
 	
+	/**
+	 * Find eigen values of a matrix
+	 * @param matrix a two-dimensional array representing a matrix
+	 * @return the eigen values for the input matrix
+	 */
 	public double[] findEigenValue(double[][] matrix)
 	{
 		EigenvalueDecomposition eigenDecomposition = eigen(transformationMatrix);
@@ -470,6 +588,10 @@ public class RipMathApplet extends JApplet {
 		return result;
 	}
 
+	/**
+	 * A general function for transformation defined by TransformationMatrixTable
+	 * The transformation can be either linear or affine
+	 */
 	public void transform() {
 		try
 		{
@@ -508,7 +630,12 @@ public class RipMathApplet extends JApplet {
 		}
 	}
 	
-	// Actual Transformation
+	/**
+	 * Actual Transformation
+	 * @param points4D
+	 * @param transformationMatrix
+	 * @return transformed points in 3D
+	 */
 	public static double[][] transform(double[][] points4D, double[][] transformationMatrix) {
 		double[][] result = new double[4][points4D.length];
 
@@ -520,8 +647,8 @@ public class RipMathApplet extends JApplet {
 	}
 	
 	/**
-	 * Update information on determinant, eigen value and rank Called on clicked
-	 * of button_Transform
+	 * Update information on determinant, eigen value, rank and QR matrices 
+	 * Called on clicked of button_Transform
 	 */
 	public void updateInfo() {
 		double[][] tmpMatrix;
@@ -548,7 +675,7 @@ public class RipMathApplet extends JApplet {
 		double[] eigenValues = findEigenValue(tmpMatrix);
 		double rank = rank(tmpMatrix);
 		textArea_info.setText("Determinant:\t" + fourDecimal.format(determinant) + "\n"
-				+ "Eigen Value:\t" + print(eigenValues, ", ") + "\n" 
+				+ "Eigen Value:\t" + format(eigenValues, ", ") + "\n" 
 				+ "Rank:\t" + rank);
 		
 		// update Q and R matrices
@@ -562,6 +689,11 @@ public class RipMathApplet extends JApplet {
 		}
 	}
 
+	/**
+	 * Parse the expression and then evaluate it
+	 * @param expression
+	 * @return a double integer resulted from the evaluation of the expession
+	 */
 	public static double parseAndEvaluate(String expression) {
 		String strd = psr.parse(expression);
 		StringTokenizer tokenizer = new StringTokenizer(strd);
@@ -573,7 +705,6 @@ public class RipMathApplet extends JApplet {
 
 	/**
 	 * Map colors to points
-	 * 
 	 * @param points
 	 * @return an array color mapping to each point
 	 */
@@ -618,23 +749,39 @@ public class RipMathApplet extends JApplet {
 		return colorMap;
 	}
 
-	// function definition
-	public static double f1(double x, double y) {
+	
+	/**
+	 * Function definition
+	 * @param x
+	 * @param y
+	 * @return a double integer
+	 */
+	public static double f(double x, double y) {
 		double z = x;
 		return z;
 	}
 
-	// grid version of the function
+	/**
+	 * Grid version of the function f to be used for grid plot
+	 * @param x
+	 * @param y
+	 * @return
+	 */
 	public static double[][] f(double[] x, double[] y) {
 		double[][] z = new double[y.length][x.length];
 		for (int i = 0; i < x.length; i++)
 			for (int j = 0; j < y.length; j++)
-				z[j][i] = f1(x[i], y[j]);
+				z[j][i] = f(x[i], y[j]);
 		return z;
 	}
 	
-	// print array
-	public static String print(double[] array, String separator)
+	/**
+	 * Format an array defined by a separator
+	 * @param array
+	 * @param separator
+	 * @return a formatted string of the input array
+	 */
+	public static String format(double[] array, String separator)
 	{
 		String s = "";
 		for(int i = 0; i < array.length; i++)
@@ -645,12 +792,22 @@ public class RipMathApplet extends JApplet {
 		return s;
 	}
 	
+	
+	/**
+	 * Format an array defined by a default separator
+	 * @param array
+	 * @return a formatted string of the input array separated by a white space
+	 */
 	public static String format(double[] array)
 	{
-		return print(array, " ");
+		return format(array, " ");
 	}
 
-	// print matrix
+	/**
+	 * Format a matrix
+	 * @param matrix
+	 * @return a formattetd string of the input matrix
+	 */
 	public static String format(double[][] matrix) {
 		String s = "";
 		for (double[] row : matrix) 
