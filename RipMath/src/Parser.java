@@ -762,7 +762,23 @@ class Parser
 		throw new Error(row(), col(), 102, fn_name);
 	}
 
-
+	////////////////////////////////////////////////////////////////////////////
+	// Custom variables
+	////////////////////////////////////////////////////////////////////////////
+	public boolean useCustomVariables = false;
+	private double x_value = 0;
+	private double y_value = 0;
+	private double z_value = 0;
+	
+	// Setter for customm variable
+	public void setXYZ(double argx, double argy, double argz)
+	{
+		x_value = argx;
+		y_value = argy;
+		z_value = argz;
+	}
+	///////////////////////////////////////////////////////////////////////////
+	
 	/**
 	 * evaluate a variable
 	 */
@@ -774,7 +790,15 @@ class Parser
 		// check for built-in variables
 		if (varUpper.equals("E"))  {return Math.E;}
 		if (varUpper.equals("PI")) {return Math.PI;}
-
+		
+		// Custom variables
+		if(useCustomVariables)
+		{
+			if (varUpper.equals("X")) {return x_value;}
+			else if (varUpper.equals("Y")) {return y_value;}
+			else if (varUpper.equals("Z")) {return z_value;}
+		}
+		
 		// check for user defined variables
 		if (user_var.containsKey(varUpper))
 		{
@@ -804,8 +828,6 @@ class Parser
 	{
 		return expr_pos - token.length() + 1;
 	}
-
-
 
 /// private enumerations
 	private enum TOKENTYPE {NOTHING, DELIMETER, NUMBER, VARIABLE, FUNCTION, UNKNOWN}

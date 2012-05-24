@@ -12,6 +12,10 @@ import org.math.plot.plotObjects.Axis;
 import org.math.plot.plotObjects.Base;
 import org.math.plot.plotObjects.BaseLine;
 import org.math.plot.plots.GridPlot3D;
+import org.math.plot.plots.LinePlot;
+import org.math.plot.plots.Plot;
+import org.math.plot.plots.ScatterPlot;
+
 import delaunay_triangulation.Delaunay_Triangulation;
 
 // JMathArray
@@ -46,6 +50,7 @@ import java.awt.FlowLayout;
 import javax.swing.JLabel;
 import java.awt.GridLayout;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 
 /**
  * @author Pye Phyo Maung
@@ -53,8 +58,8 @@ import javax.swing.JScrollPane;
  */
 public class RipMathApplet extends JApplet {
 	private static final double[][] XYdX = null;
-	private Plot3DPanel inplot;
-	private Plot3DPanel outplot;
+	private Plot3DPanel inplotPanel;
+	private Plot3DPanel outplotPanel;
 	private CustomizedScatteredPlot scatterPlot_in;
 	private CustomizedScatteredPlot scatterPlot_out;
 	private double[][] data;
@@ -70,6 +75,12 @@ public class RipMathApplet extends JApplet {
 	private Delaunay_Triangulation delaunay;
 	private QRDecomposition3x3 qrdecomposition;
 	
+	private Plot xAxis;
+	private Plot yAxis;
+	private Plot zAxis;
+	private Plot qPlot;
+	private Plot rPlot;
+	
 	private static final DecimalFormat fourDecimal = new DecimalFormat("##.0000");
 	private double[] inMinBounds;
 	private double[] inMaxBounds;
@@ -83,6 +94,10 @@ public class RipMathApplet extends JApplet {
 	private JTable table_R;
 	private JPanel panel_Q;
 	private JPanel panel_R;
+	private JCheckBox checkBox_Q;
+	private JCheckBox checkBox_R;
+	private JPanel panel_transformOption;
+	private JCheckBox checkBox_useVariables;
 
 	/**
 	 * Create the applet.
@@ -108,9 +123,9 @@ public class RipMathApplet extends JApplet {
 				}
 				
 				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
-				outplot.removeAllPlots();
+				outplotPanel.removeAllPlots();
 				
-				createInplot();
+				createinplotPanel();
 			}
 		});
 		
@@ -121,39 +136,10 @@ public class RipMathApplet extends JApplet {
 		getContentPane().add(panelScroller, "cell 1 2 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
 		gbl_panel.columnWidths = new int[] { 200, 0, 0, 0 };
-		gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 24 };
+		gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 24 };
 		gbl_panel.columnWeights = new double[] { 1.0, 0.0, 1.0, Double.MIN_VALUE };
-		gbl_panel.rowWeights = new double[] { 0.0, 1.0, 0.0, 1.0, 1.0, Double.MIN_VALUE };
+		gbl_panel.rowWeights = new double[] { 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, Double.MIN_VALUE };
 		panel.setLayout(gbl_panel);
-
-		comboBox_transform = new JComboBox();
-		comboBox_transform.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				int choice = comboBox_transform.getSelectedIndex();
-				if(choice == 0)
-				{
-					TransformationMatrixTable.setValueAt("0", 0, 3);
-					TransformationMatrixTable.setValueAt("0", 1, 3);
-					TransformationMatrixTable.setValueAt("0", 2, 3);
-					TransformationMatrixTable.setValueAt("0", 3, 0);
-					TransformationMatrixTable.setValueAt("0", 3, 1);
-					TransformationMatrixTable.setValueAt("0", 3, 2);
-					TransformationMatrixTable.setValueAt("1", 3, 3);
-				}
-			
-				TransformationMatrixTable.repaint();
-			}
-		});
-		
-		comboBox_transform.setModel(new DefaultComboBoxModel(new String[] {
-				"LINEAR", "AFFINE" }));
-		GridBagConstraints gbc_comboBox_Transform = new GridBagConstraints();
-		gbc_comboBox_Transform.anchor = GridBagConstraints.NORTHWEST;
-		gbc_comboBox_Transform.insets = new Insets(0, 0, 5, 5);
-		gbc_comboBox_Transform.gridx = 0;
-		gbc_comboBox_Transform.gridy = 0;
-		panel.add(comboBox_transform, gbc_comboBox_Transform);
 
 		TransformationMatrixTable = new JTable(){
 			public boolean isCellEditable(int row, int column)
@@ -226,11 +212,47 @@ public class RipMathApplet extends JApplet {
 		gbc_chckbxShowQrDecomposition.gridy = 0;
 		panel.add(chckbxShowQrDecomposition, gbc_chckbxShowQrDecomposition);
 		
+		panel_transformOption = new JPanel();
+		GridBagConstraints gbc_panel_transformOption = new GridBagConstraints();
+		gbc_panel_transformOption.insets = new Insets(0, 0, 5, 5);
+		gbc_panel_transformOption.fill = GridBagConstraints.BOTH;
+		gbc_panel_transformOption.gridx = 0;
+		gbc_panel_transformOption.gridy = 0;
+		panel.add(panel_transformOption, gbc_panel_transformOption);
+		panel_transformOption.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+
+		comboBox_transform = new JComboBox();
+		panel_transformOption.add(comboBox_transform);
+		comboBox_transform.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				int choice = comboBox_transform.getSelectedIndex();
+				if(choice == 0)
+				{
+					TransformationMatrixTable.setValueAt("0", 0, 3);
+					TransformationMatrixTable.setValueAt("0", 1, 3);
+					TransformationMatrixTable.setValueAt("0", 2, 3);
+					TransformationMatrixTable.setValueAt("0", 3, 0);
+					TransformationMatrixTable.setValueAt("0", 3, 1);
+					TransformationMatrixTable.setValueAt("0", 3, 2);
+					TransformationMatrixTable.setValueAt("1", 3, 3);
+				}
+
+				TransformationMatrixTable.repaint();
+			}
+		});
+
+		comboBox_transform.setModel(new DefaultComboBoxModel(new String[] {
+				"LINEAR", "AFFINE" }));
+
+		checkBox_useVariables = new JCheckBox("Use variables");
+		panel_transformOption.add(checkBox_useVariables);
+
 		GridBagConstraints gbc_TransformationMatrixTable = new GridBagConstraints();
 		gbc_TransformationMatrixTable.insets = new Insets(0, 0, 5, 5);
 		gbc_TransformationMatrixTable.anchor = GridBagConstraints.NORTHWEST;
 		gbc_TransformationMatrixTable.gridx = 0;
-		gbc_TransformationMatrixTable.gridy = 1;
+		gbc_TransformationMatrixTable.gridy = 2;
 		panel.add(TransformationMatrixTable, gbc_TransformationMatrixTable);
 		
 		panel_QR = new JPanel();
@@ -240,13 +262,29 @@ public class RipMathApplet extends JApplet {
 		gbc_panel_QR.insets = new Insets(0, 0, 5, 0);
 		gbc_panel_QR.fill = GridBagConstraints.BOTH;
 		gbc_panel_QR.gridx = 2;
-		gbc_panel_QR.gridy = 1;
+		gbc_panel_QR.gridy = 2;
 		panel.add(panel_QR, gbc_panel_QR);
 		panel_QR.setLayout(new GridLayout(0, 1, 0, 0));
 		
 		panel_Q = new JPanel();
 		panel_QR.add(panel_Q);
 		panel_Q.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		
+		// Check box for drawing the transformation with Q
+		checkBox_Q = new JCheckBox("");
+		checkBox_Q.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(checkBox_Q.isSelected())
+				{
+					createQPlot();
+				}
+				else
+				{
+					if(qPlot != null) outplotPanel.removePlot(qPlot);
+				}
+			}
+		});
+		panel_Q.add(checkBox_Q);
 		
 		label_Q = new JLabel("Q = ");
 		panel_Q.add(label_Q);
@@ -276,6 +314,23 @@ public class RipMathApplet extends JApplet {
 		
 		panel_R = new JPanel();
 		panel_QR.add(panel_R);
+		
+		// Check box for drawing the transformation with R
+		checkBox_R = new JCheckBox("");
+		checkBox_R.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if(checkBox_R.isSelected())
+				{
+					createRPlot();
+				}
+				else
+				{
+					if(rPlot != null) outplotPanel.removePlot(rPlot);
+				}
+			}
+		});
+		panel_R.add(checkBox_R);
+		
 		
 		label_R = new JLabel("R = ");
 		panel_R.add(label_R);
@@ -309,7 +364,7 @@ public class RipMathApplet extends JApplet {
 		gbc_button_transform.anchor = GridBagConstraints.WEST;
 		gbc_button_transform.insets = new Insets(0, 0, 5, 5);
 		gbc_button_transform.gridx = 0;
-		gbc_button_transform.gridy = 2;
+		gbc_button_transform.gridy = 3;
 		panel.add(button_transform, gbc_button_transform);
 		button_transform.addMouseListener(new MouseAdapter() {
 			@Override
@@ -339,7 +394,7 @@ public class RipMathApplet extends JApplet {
 		gbc_textArea_info.anchor = GridBagConstraints.NORTHWEST;
 		gbc_textArea_info.insets = new Insets(0, 0, 5, 5);
 		gbc_textArea_info.gridx = 1;
-		gbc_textArea_info.gridy = 1;
+		gbc_textArea_info.gridy = 2;
 		panel.add(textArea_info, gbc_textArea_info);
 
 		// testing with 45 degree rotation
@@ -350,71 +405,107 @@ public class RipMathApplet extends JApplet {
 				{ 0, 0, 0, 1 }};
 
 		// create your PlotPanel (you can use it as a JPanel)
-		initInplot();
-		initOutplot();
+		initinplotPanel();
+		initoutplotPanel();
 		
 		delaunay = new Delaunay_Triangulation();
 		
-		getContentPane().add(inplot, "cell 0 1 2 1,alignx center,aligny center");
-		getContentPane().add(outplot, "cell 2 1,alignx center,aligny center");
+		getContentPane().add(inplotPanel, "cell 0 1 2 1,alignx center,aligny center");
+		getContentPane().add(outplotPanel, "cell 2 1,alignx center,aligny center");
 		comboBox_surfaces.setSelectedIndex(0);
 	}
 	
 	
 	/**
-	 * Initialize outplot
+	 * Initialize outplotPanel
 	 */
-	private void initOutplot()
+	private void initoutplotPanel()
 	{
-		outplot = new Plot3DPanel();
-		outplot.setPreferredSize(new Dimension(400,420));
-		outplot.plotCanvas.getGrid().setVisible(false);
-		outplot.removeLegend();
+		outplotPanel = new Plot3DPanel();
+		outplotPanel.setPreferredSize(new Dimension(400,420));
+		outplotPanel.plotCanvas.getGrid().setVisible(false);
+		outplotPanel.removeLegend();
 	}
 	
 	
 	/**
-	 * Initialize inplot
+	 * Initialize inplotPanel
 	 */
-	private void initInplot()
+	private void initinplotPanel()
 	{
-		inplot = new Plot3DPanel();
-		inplot.setPreferredSize(new Dimension(400,420));
-		inplot.plotCanvas.getGrid().setVisible(false);
-		inplot.removeLegend();
+		inplotPanel = new Plot3DPanel();
+		inplotPanel.setPreferredSize(new Dimension(400,420));
+		inplotPanel.plotCanvas.getGrid().setVisible(false);
+		inplotPanel.removeLegend();
 	}
 	
 	/**
-	 * Create inplot and add axes
+	 * Create inplotPanel and add axes
 	 */
-	private void createInplot()
+	private void createinplotPanel()
 	{
-		inplot.removeAllPlots();
+		inplotPanel.removeAllPlots();
 		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
-		inplot.addPlot(scatterPlot_in);
+		inplotPanel.addPlot(scatterPlot_in);
 		
 		// create axes
-		inMinBounds = inplot.plotCanvas.base.getMinBounds();
-		inMaxBounds = inplot.plotCanvas.base.getMaxBounds();
-		inplot.addLinePlot("", Color.BLUE,new double[][] {{inMinBounds[0],0,0},{inMaxBounds[0],0,0}});
-		inplot.addLinePlot("", Color.RED,new double[][] {{0,inMinBounds[1],0},{0,inMaxBounds[1],0}});
-		inplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,inMinBounds[2]},{0,0,inMaxBounds[2]}});
+		inMinBounds = inplotPanel.plotCanvas.base.getMinBounds();
+		inMaxBounds = inplotPanel.plotCanvas.base.getMaxBounds();
+		
+		xAxis = new LinePlot("", Color.BLUE, new double[][] {{inMinBounds[0],0,0},{inMaxBounds[0],0,0}});
+		yAxis = new LinePlot("", Color.RED,new double[][] {{0,inMinBounds[1],0},{0,inMaxBounds[1],0}});
+		zAxis = new LinePlot("", Color.BLACK,new double[][] {{0,0,inMinBounds[2]},{0,0,inMaxBounds[2]}}); 
+		addAxes(inplotPanel);
+	}
+	
+	private void createQPlot()
+	{
+		removeAxes(outplotPanel);
+		if(qPlot != null) outplotPanel.removePlot(qPlot);
+		double[][] qTransformData = transpose(times(qrdecomposition.Q, transpose(data)));
+		qPlot = new ScatterPlot("", Color.lightGray, qTransformData);
+		outplotPanel.addPlot(qPlot);
+		addAxes(outplotPanel);
+	}
+	
+	private void createRPlot()
+	{
+		removeAxes(outplotPanel);
+		if(rPlot != null) outplotPanel.removePlot(rPlot);
+		double[][] rTransformData = transpose(times(qrdecomposition.R, transpose(data)));
+		rPlot = new ScatterPlot("", Color.CYAN, rTransformData);
+		outplotPanel.addPlot(rPlot);
+		addAxes(outplotPanel);
+	}
+	
+	private void addAxes(Plot3DPanel plot3DPanel)
+	{
+		plot3DPanel.addPlot(xAxis);
+		plot3DPanel.addPlot(yAxis);
+		plot3DPanel.addPlot(zAxis);
+	}
+	
+	private void removeAxes(Plot3DPanel plot3DPanel)
+	{
+		plot3DPanel.removePlot(xAxis);
+		plot3DPanel.removePlot(yAxis);
+		plot3DPanel.removePlot(zAxis);
 	}
 	
 	/**
-	 * Synchronize Axes of inplot and outplot
+	 * Synchronize Axes of inplotPanel and outplotPanel
 	 */
 	public void syncAxesBounds()
 	{
-		// draw axes for outplot
-		double[] outMinBounds = outplot.plotCanvas.base.getMinBounds();
-		double[] outMaxBounds = outplot.plotCanvas.base.getMaxBounds();
+		// draw axes for outplotPanel
+		double[] outMinBounds = outplotPanel.plotCanvas.base.getMinBounds();
+		double[] outMaxBounds = outplotPanel.plotCanvas.base.getMaxBounds();
 		
 		try
 		{
-			inplot.removePlot(3);
-			inplot.removePlot(2);
-			inplot.removePlot(1);
+			inplotPanel.removePlot(3);
+			inplotPanel.removePlot(2);
+			inplotPanel.removePlot(1);
 		}
 		catch(Exception e)
 		{
@@ -429,23 +520,23 @@ public class RipMathApplet extends JApplet {
 			switch(i)
 			{
 			case 0:
-				outplot.addLinePlot("", Color.BLUE,new double[][] {{min,0,0},{max,0,0}});
-				inplot.addLinePlot("", Color.BLUE,new double[][] {{min,0,0},{max,0,0}});
+				xAxis = new LinePlot("", Color.BLUE,new double[][] {{min,0,0},{max,0,0}});
 				break;
 			case 1:
-				outplot.addLinePlot("", Color.RED,new double[][] {{0,min,0},{0,max,0}});
-				inplot.addLinePlot("", Color.RED,new double[][] {{0,min,0},{0,max,0}});
+				yAxis = new LinePlot("", Color.RED,new double[][] {{0,min,0},{0,max,0}});
 				break;
 			case 2:
-				outplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,min},{0,0,max}});
-				inplot.addLinePlot("", Color.BLACK,new double[][] {{0,0,min},{0,0,max}});
+				zAxis = new LinePlot("", Color.BLACK,new double[][] {{0,0,min},{0,0,max}});
 				break;
 			}
 		}
 		
-		// lock the bounds of inplot and outplot so the views are synchronized
-		inplot.setFixedBounds(inMinBounds, inMaxBounds);
-		outplot.setFixedBounds(inMinBounds, inMaxBounds);
+		addAxes(inplotPanel);
+		addAxes(outplotPanel);
+		
+		// lock the bounds of inplotPanel and outplotPanel so the views are synchronized
+		inplotPanel.setFixedBounds(inMinBounds, inMaxBounds);
+		outplotPanel.setFixedBounds(inMinBounds, inMaxBounds);
 	}
 	
 	/**
@@ -594,35 +685,34 @@ public class RipMathApplet extends JApplet {
 	 */
 	public void transform() {
 		try
-		{
-			// Update transformation matrix
-			for (int i = 0; i < 4; i++) 
-			{
-				for (int j = 0; j < 4; j++) 
-				{
-					String expression = (String) TransformationMatrixTable.getValueAt(i, j);
-					double d = parseAndEvaluate(expression);
-					transformationMatrix[i][j] = d;
-				}
-			}
-			
+		{	
 			// double start = System.nanoTime();	// debug
 			
 			// append dummy column vector
 			double[][] points4D = insertColumns(data, 3, one(data.length));
 			
 			// Get transformed points
-			double[][] transformedData = transform(points4D, transformationMatrix);
+			double[][] transformedData;
+			if(this.checkBox_useVariables.isSelected())
+			{
+				psr.useCustomVariables = true;
+				transformedData = transformWithVariable(points4D, transformationMatrix);
+			}
+			else
+			{
+				psr.useCustomVariables = false;
+				transformedData = transform(points4D, transformationMatrix);
+			}
 			
 			//double end = System.nanoTime();
 			//System.out.println(end-start);
 			
 	
 			// plot the transformed (output) data
-			outplot.removeAllPlots();	// remove the current output plot
+			outplotPanel.removeAllPlots();	// remove the current output plot
 			scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
 					transformedData);
-			outplot.addPlot(scatterPlot_out);
+			outplotPanel.addPlot(scatterPlot_out);
 		}
 		catch(NumberFormatException e)
 		{
@@ -636,7 +726,18 @@ public class RipMathApplet extends JApplet {
 	 * @param transformationMatrix
 	 * @return transformed points in 3D
 	 */
-	public static double[][] transform(double[][] points4D, double[][] transformationMatrix) {
+	public double[][] transform(double[][] points4D, double[][] transformationMatrix) {
+		// Update transformation matrix
+		for (int i = 0; i < 4; i++) 
+		{
+			for (int j = 0; j < 4; j++) 
+			{
+				String expression = (String) TransformationMatrixTable.getValueAt(i, j);
+				double d = parseAndEvaluate(expression);
+				transformationMatrix[i][j] = d;
+			}
+		}
+		
 		double[][] result = new double[4][points4D.length];
 
 		// matrix multiplication (batch multiplication => much faster)
@@ -644,6 +745,31 @@ public class RipMathApplet extends JApplet {
 
 		// remove dummy components and return only 3d points
 		return deleteColumns(transpose(result), 3);
+	}
+	
+	public double[][] transformWithVariable(double [][] points4D, double[][] transformationMatrix)
+	{
+		double[][] result = new double[points4D.length][4];
+		
+		for(int count = 0; count < points4D.length; count++)
+		{
+			double[] tmpPt = points4D[count];
+			psr.setXYZ(tmpPt[0], tmpPt[1], tmpPt[2]);
+			
+			for (int i = 0; i < 4; i++) 
+			{
+				for (int j = 0; j < 4; j++) 
+				{
+					String expression = (String) TransformationMatrixTable.getValueAt(i, j);
+					double d = parseAndEvaluate(expression);
+					transformationMatrix[i][j] = d;
+				}
+			}
+			
+			result[count] = times(transformationMatrix, tmpPt);
+		}
+		
+		return result;
 	}
 	
 	/**
@@ -694,8 +820,14 @@ public class RipMathApplet extends JApplet {
 	 * @param expression
 	 * @return a double integer resulted from the evaluation of the expession
 	 */
-	public static double parseAndEvaluate(String expression) {
+	public static double parseAndEvaluate(String expression) throws NumberFormatException{
 		String strd = psr.parse(expression);
+		
+		/*/ Debug parser with variable
+		psr.setXYZ(2, 0, 0);
+		System.out.print(psr.parse("2*x + 3*y"));
+		*/
+		
 		StringTokenizer tokenizer = new StringTokenizer(strd);
 		tokenizer.nextToken();
 		tokenizer.nextToken();

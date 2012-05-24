@@ -22,12 +22,36 @@ public class QRDecomposition3x3 {
 		}
 	}
 	
+	private void decompose()
+	{
+		/*/ test if A is an upper triangular matrix 
+		if(isUpperTriangle(A))
+		{
+			Q = identity(3);
+			R = A;
+			return;
+		}
+		*/
+		
+		Jama.Matrix MatrixA = new Jama.Matrix(A);
+		Jama.QRDecomposition jamaQRDecomposition = new Jama.QRDecomposition(MatrixA);
+		Q = jamaQRDecomposition.getQ().getArray();
+		R = jamaQRDecomposition.getR().getArray();
+		
+		/*
+		if(det(Q) == -1.0)
+		{
+			Q = times(Q, -1);
+			R = times(R, -1);
+		}
+		*/
+	}
 	
 	/**
 	 * Inner function for QR decomposition
 	 * A = QR using householder matrix 
 	 */
-	private void decompose()
+	private void decompose1()
 	{
 		if(A == null) return;
 		
@@ -55,7 +79,8 @@ public class QRDecomposition3x3 {
 		
 		double norm_x1_minus_y1 = norm(x1_minus_y1);
 		double[][] u1;
-		if(norm_x1_minus_y1 == 0)
+		//if(norm_x1_minus_y1 == 0)
+		if(x1[1][0] == 0 && x1[2][0] == 0)
 		{
 			u1 = identity(3);
 		}
@@ -79,7 +104,8 @@ public class QRDecomposition3x3 {
 		
 		double norm_x2_minus_y2 = norm(x2_minus_y2);
 		double[][] u2;
-		if(norm_x2_minus_y2 == 0)
+		//if(norm_x2_minus_y2 == 0)
+		if(x2[1][0] == 0 && x2[2][0] == 0)
 		{
 			u2 = identity(2);
 		}
