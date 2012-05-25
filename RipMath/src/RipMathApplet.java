@@ -5,6 +5,8 @@ import java.awt.Color;
 import javax.swing.JApplet;
 import net.miginfocom.swing.MigLayout;
 
+// Parser
+
 // JMathPlot
 import org.math.plot.Plot3DPanel;
 import org.math.plot.canvas.PlotCanvas;
@@ -15,6 +17,8 @@ import org.math.plot.plots.GridPlot3D;
 import org.math.plot.plots.LinePlot;
 import org.math.plot.plots.Plot;
 import org.math.plot.plots.ScatterPlot;
+
+import parser.*;
 
 import delaunay_triangulation.Delaunay_Triangulation;
 
@@ -64,7 +68,7 @@ public class RipMathApplet extends JApplet {
 	private CustomizedScatteredPlot scatterPlot_out;
 	private double[][] data;
 	private Color[] colorMap;
-	private static Parser psr = new Parser();
+	private Parser psr = new Parser();
 	private JTable TransformationMatrixTable;
 	private double[][] transformationMatrix;
 	private JButton button_transform;
@@ -98,6 +102,16 @@ public class RipMathApplet extends JApplet {
 	private JCheckBox checkBox_R;
 	private JPanel panel_transformOption;
 	private JCheckBox checkBox_useVariables;
+	
+	public enum Surface
+	{
+		PLANE, CUBE, SPHERE 
+	}
+	
+	public enum TransformMode
+	{
+		LINEAR, AFFINE
+	}
 
 	/**
 	 * Create the applet.
@@ -105,32 +119,12 @@ public class RipMathApplet extends JApplet {
 	public RipMathApplet() {
 		// set layout of the applet
 		getContentPane().setLayout(
-				new MigLayout("", "[][200.00px,grow][grow][]", "[][200.00,grow,top][200.00,grow]"));
-		
-		comboBox_surfaces = new JComboBox();
-		comboBox_surfaces.setModel(new DefaultComboBoxModel(surfaces));
-		comboBox_surfaces.setEditable(false);
-		comboBox_surfaces.addActionListener(new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				int choice = comboBox_surfaces.getSelectedIndex();
-				switch(choice)
-				{
-				case 0:	data = generatePlane(); break;
-				case 1:	data = generateCube(); break;
-				case 2: data = generateSphere(); break;
-				}
-				
-				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
-				outplotPanel.removeAllPlots();
-				
-				createinplotPanel();
-			}
-		});
-		
-		getContentPane().add(comboBox_surfaces, "cell 1 0");
+				new MigLayout("", "[][300.00px,grow][grow][]", "[][400.00,grow,top][400.00,grow]"));
 
+		// Initialize GUI cocmponents of plots
+		initGUI_plots();
+		
+		// Initialize the main panel that contains GUIs for transform and QR matrices
 		panel = new JPanel();
 		JScrollPane panelScroller = new JScrollPane(panel);
 		getContentPane().add(panelScroller, "cell 1 2 2 1,grow");
@@ -140,12 +134,102 @@ public class RipMathApplet extends JApplet {
 		gbl_panel.columnWeights = new double[] { 1.0, 0.0, 1.0, Double.MIN_VALUE };
 		gbl_panel.rowWeights = new double[] { 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, Double.MIN_VALUE };
 		panel.setLayout(gbl_panel);
+		
+		// Initialize GUI components of transformation
+		initGUI_transform();
+		
+		// Initialize GUI components of QR
+		initGUI_QR();
 
+		// Initialize inner representation of transformation matrix
+		transformationMatrix = new double[][] { 
+				{ 1, 0, 0, 0 },
+				{ 0, 1, 0, 0 }, 
+				{ 0, 0, 1, 0 },
+				{ 0, 0, 0, 1 }};
+
+		delaunay = new Delaunay_Triangulation();
+		
+		comboBox_surfaces.setSelectedIndex(0);
+	}
+	
+	private void initGUI_plots()
+	{
+		// Initialize the combo box for selecting a surface
+		comboBox_surfaces = new JComboBox();
+		comboBox_surfaces.setModel(new DefaultComboBoxModel(Surface.values()));
+		comboBox_surfaces.setEditable(false);
+		comboBox_surfaces.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
+				switch(choice)
+				{
+				case PLANE:	data = generatePlane(); break;
+				case CUBE:	data = generateCube(); break;
+				case SPHERE: data = generateSphere(); break;
+				}
+				
+				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
+				outplotPanel.removeAllPlots();
+				
+				createinplotPanel();
+			}
+		});
+		getContentPane().add(comboBox_surfaces, "cell 1 0");
+		
+		// create your PlotPanel (you can use it as a JPanel)
+		initinplotPanel();
+		initoutplotPanel();
+	}
+	
+	private void initGUI_transform()
+	{
+		// Initialze that contains comboBox_transform and checkBox_useVariables
+		panel_transformOption = new JPanel();
+		GridBagConstraints gbc_panel_transformOption = new GridBagConstraints();
+		gbc_panel_transformOption.insets = new Insets(0, 0, 5, 5);
+		gbc_panel_transformOption.fill = GridBagConstraints.BOTH;
+		gbc_panel_transformOption.gridx = 0;
+		gbc_panel_transformOption.gridy = 0;
+		panel.add(panel_transformOption, gbc_panel_transformOption);
+		panel_transformOption.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		
+		// Initialize combo box for selecting transform mode (Linear or Affine)
+		comboBox_transform = new JComboBox();
+		panel_transformOption.add(comboBox_transform);
+		comboBox_transform.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				TransformMode choice = (TransformMode) comboBox_transform.getSelectedItem();
+				if(choice.equals(TransformMode.LINEAR))
+				{
+					TransformationMatrixTable.setValueAt("0", 0, 3);
+					TransformationMatrixTable.setValueAt("0", 1, 3);
+					TransformationMatrixTable.setValueAt("0", 2, 3);
+					TransformationMatrixTable.setValueAt("0", 3, 0);
+					TransformationMatrixTable.setValueAt("0", 3, 1);
+					TransformationMatrixTable.setValueAt("0", 3, 2);
+					TransformationMatrixTable.setValueAt("1", 3, 3);
+				}
+
+				TransformationMatrixTable.repaint();
+			}
+		});
+
+		comboBox_transform.setModel(new DefaultComboBoxModel(TransformMode.values()));
+
+		// Initialize check box to use variables in transformation matrix
+		checkBox_useVariables = new JCheckBox("Use variables");
+		panel_transformOption.add(checkBox_useVariables);
+		
+		// Initialize table to display and edit transformation matrix
 		TransformationMatrixTable = new JTable(){
 			public boolean isCellEditable(int row, int column)
 			{
-				int choice = comboBox_transform.getSelectedIndex();
-				if(choice == 0)
+				TransformMode choice = (TransformMode) comboBox_transform.getSelectedItem();
+				if(choice.equals(TransformMode.LINEAR))
 				{
 					if((row == 0 && column == 3) ||
 						(row == 1 && column == 3) ||
@@ -161,7 +245,191 @@ public class RipMathApplet extends JApplet {
 				return true;
 			}
 		};
+		configTransformationMatrixTable();
 		
+		GridBagConstraints gbc_TransformationMatrixTable = new GridBagConstraints();
+		gbc_TransformationMatrixTable.insets = new Insets(0, 0, 5, 5);
+		gbc_TransformationMatrixTable.anchor = GridBagConstraints.NORTHWEST;
+		gbc_TransformationMatrixTable.gridx = 0;
+		gbc_TransformationMatrixTable.gridy = 2;
+		panel.add(TransformationMatrixTable, gbc_TransformationMatrixTable);
+		
+		// Initialize button for triggering the transformation
+		button_transform = new JButton("Transform");
+		GridBagConstraints gbc_button_transform = new GridBagConstraints();
+		gbc_button_transform.anchor = GridBagConstraints.WEST;
+		gbc_button_transform.insets = new Insets(0, 0, 5, 5);
+		gbc_button_transform.gridx = 0;
+		gbc_button_transform.gridy = 3;
+		panel.add(button_transform, gbc_button_transform);
+		button_transform.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				transform();
+				syncAxesBounds();
+
+				// QR decomposition
+				double[][] matrix = new double[3][3];
+				for(int i = 0; i < 3; i++)
+				{
+					for(int j = 0; j < 3 ; j++)
+					{
+						matrix[i][j] = transformationMatrix[i][j];
+					}
+				}
+				qrdecomposition = new QRDecomposition3x3(matrix);				
+				updateInfo();
+			}
+		});
+		
+		// Initialize text area for displaying the transform matrix info
+		textArea_info = new JTextArea();
+		textArea_info.setOpaque(false);
+		textArea_info.setEditable(false);
+		GridBagConstraints gbc_textArea_info = new GridBagConstraints();
+		gbc_textArea_info.fill = GridBagConstraints.BOTH;
+		gbc_textArea_info.anchor = GridBagConstraints.NORTHWEST;
+		gbc_textArea_info.insets = new Insets(0, 0, 5, 5);
+		gbc_textArea_info.gridx = 1;
+		gbc_textArea_info.gridy = 2;
+		panel.add(textArea_info, gbc_textArea_info);
+	}
+	
+	private void initGUI_QR()
+	{
+		// Initialize QR panel that contains panel_Q and panel_R
+		panel_QR = new JPanel();
+		panel_QR.setVisible(false);
+		GridBagConstraints gbc_panel_QR = new GridBagConstraints();
+		gbc_panel_QR.gridheight = 3;
+		gbc_panel_QR.insets = new Insets(0, 0, 5, 0);
+		gbc_panel_QR.fill = GridBagConstraints.BOTH;
+		gbc_panel_QR.gridx = 2;
+		gbc_panel_QR.gridy = 2;
+		panel.add(panel_QR, gbc_panel_QR);
+		panel_QR.setLayout(new GridLayout(0, 1, 0, 0));
+
+		// Initialize check box for QR GUI display
+		chckbxShowQrDecomposition = new JCheckBox("Show QR decomposition");
+		chckbxShowQrDecomposition.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(chckbxShowQrDecomposition.isSelected())
+				{
+					panel_QR.setVisible(true);
+				}
+				else
+				{
+					panel_QR.setVisible(false);
+				}
+			}
+		});
+
+		GridBagConstraints gbc_chckbxShowQrDecomposition = new GridBagConstraints();
+		gbc_chckbxShowQrDecomposition.insets = new Insets(0, 0, 5, 0);
+		gbc_chckbxShowQrDecomposition.gridx = 2;
+		gbc_chckbxShowQrDecomposition.gridy = 0;
+		panel.add(chckbxShowQrDecomposition, gbc_chckbxShowQrDecomposition);
+
+		
+		// Initialize panel for Q
+		panel_Q = new JPanel();
+		panel_Q.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		panel_QR.add(panel_Q);
+
+		// Check box for drawing the transformation with Q
+		checkBox_Q = new JCheckBox("");
+		checkBox_Q.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(checkBox_Q.isSelected())
+				{
+					createQPlot();
+				}
+				else
+				{
+					if(qPlot != null) outplotPanel.removePlot(qPlot);
+				}
+			}
+		});
+		panel_Q.add(checkBox_Q);
+
+		label_Q = new JLabel("Q = ");
+		panel_Q.add(label_Q);
+
+		// Table to display Q matrix
+		table_Q = new JTable();
+		panel_Q.add(table_Q);
+		table_Q.setModel(new DefaultTableModel(
+				new Object[][] {
+						{null, null, null},
+						{null, null, null},
+						{null, null, null},
+				},
+				new String[] {
+						"", "", ""
+				}
+				) {
+			Class[] columnTypes = new Class[] {
+					Double.class, Double.class, Double.class
+			};
+			public Class getColumnClass(int columnIndex) {
+				return columnTypes[columnIndex];
+			}
+		});
+		table_Q.getColumnModel().getColumn(0).setPreferredWidth(45);
+		table_Q.getColumnModel().getColumn(1).setPreferredWidth(45);
+		table_Q.getColumnModel().getColumn(2).setPreferredWidth(45);
+
+		// Initialize panel for R
+		panel_R = new JPanel();
+		panel_R.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		panel_QR.add(panel_R);
+
+		// Check box for drawing the transformation with R
+		checkBox_R = new JCheckBox("");
+		checkBox_R.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if(checkBox_R.isSelected())
+				{
+					createRPlot();
+				}
+				else
+				{
+					if(rPlot != null) outplotPanel.removePlot(rPlot);
+				}
+			}
+		});
+		panel_R.add(checkBox_R);
+
+		label_R = new JLabel("R = ");
+		panel_R.add(label_R);
+
+		// Table to display R matrix
+		table_R = new JTable();
+		table_R.setModel(new DefaultTableModel(
+				new Object[][] {
+						{null, null, null},
+						{null, null, null},
+						{null, null, null},
+				},
+				new String[] {
+						"", "", ""
+				}
+				) {
+			Class[] columnTypes = new Class[] {
+					Double.class, Double.class, Double.class
+			};
+			public Class getColumnClass(int columnIndex) {
+				return columnTypes[columnIndex];
+			}
+		});
+		table_R.getColumnModel().getColumn(0).setPreferredWidth(45);
+		table_R.getColumnModel().getColumn(1).setPreferredWidth(45);
+		table_R.getColumnModel().getColumn(2).setPreferredWidth(45);
+		panel_R.add(table_R);
+	}
+	
+	private void configTransformationMatrixTable()
+	{
 		TransformationMatrixTable.setCellSelectionEnabled(true);
 		TransformationMatrixTable.setBorder(null);
 		TransformationMatrixTable.setModel(new DefaultTableModel(
@@ -191,230 +459,7 @@ public class RipMathApplet extends JApplet {
 		TransformationMatrixTable.getColumnModel().getColumn(1).setCellRenderer(new ColoredCellRenderer());
 		TransformationMatrixTable.getColumnModel().getColumn(2).setCellRenderer(new ColoredCellRenderer());
 		TransformationMatrixTable.getColumnModel().getColumn(3).setCellRenderer(new ColoredCellRenderer());
-		
-		chckbxShowQrDecomposition = new JCheckBox("Show QR decomposition");
-		chckbxShowQrDecomposition.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				if(chckbxShowQrDecomposition.isSelected())
-				{
-					panel_QR.setVisible(true);
-				}
-				else
-				{
-					panel_QR.setVisible(false);
-				}
-			}
-		});
-		
-		GridBagConstraints gbc_chckbxShowQrDecomposition = new GridBagConstraints();
-		gbc_chckbxShowQrDecomposition.insets = new Insets(0, 0, 5, 0);
-		gbc_chckbxShowQrDecomposition.gridx = 2;
-		gbc_chckbxShowQrDecomposition.gridy = 0;
-		panel.add(chckbxShowQrDecomposition, gbc_chckbxShowQrDecomposition);
-		
-		panel_transformOption = new JPanel();
-		GridBagConstraints gbc_panel_transformOption = new GridBagConstraints();
-		gbc_panel_transformOption.insets = new Insets(0, 0, 5, 5);
-		gbc_panel_transformOption.fill = GridBagConstraints.BOTH;
-		gbc_panel_transformOption.gridx = 0;
-		gbc_panel_transformOption.gridy = 0;
-		panel.add(panel_transformOption, gbc_panel_transformOption);
-		panel_transformOption.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-
-		comboBox_transform = new JComboBox();
-		panel_transformOption.add(comboBox_transform);
-		comboBox_transform.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				int choice = comboBox_transform.getSelectedIndex();
-				if(choice == 0)
-				{
-					TransformationMatrixTable.setValueAt("0", 0, 3);
-					TransformationMatrixTable.setValueAt("0", 1, 3);
-					TransformationMatrixTable.setValueAt("0", 2, 3);
-					TransformationMatrixTable.setValueAt("0", 3, 0);
-					TransformationMatrixTable.setValueAt("0", 3, 1);
-					TransformationMatrixTable.setValueAt("0", 3, 2);
-					TransformationMatrixTable.setValueAt("1", 3, 3);
-				}
-
-				TransformationMatrixTable.repaint();
-			}
-		});
-
-		comboBox_transform.setModel(new DefaultComboBoxModel(new String[] {
-				"LINEAR", "AFFINE" }));
-
-		checkBox_useVariables = new JCheckBox("Use variables");
-		panel_transformOption.add(checkBox_useVariables);
-
-		GridBagConstraints gbc_TransformationMatrixTable = new GridBagConstraints();
-		gbc_TransformationMatrixTable.insets = new Insets(0, 0, 5, 5);
-		gbc_TransformationMatrixTable.anchor = GridBagConstraints.NORTHWEST;
-		gbc_TransformationMatrixTable.gridx = 0;
-		gbc_TransformationMatrixTable.gridy = 2;
-		panel.add(TransformationMatrixTable, gbc_TransformationMatrixTable);
-		
-		panel_QR = new JPanel();
-		panel_QR.setVisible(false);
-		GridBagConstraints gbc_panel_QR = new GridBagConstraints();
-		gbc_panel_QR.gridheight = 3;
-		gbc_panel_QR.insets = new Insets(0, 0, 5, 0);
-		gbc_panel_QR.fill = GridBagConstraints.BOTH;
-		gbc_panel_QR.gridx = 2;
-		gbc_panel_QR.gridy = 2;
-		panel.add(panel_QR, gbc_panel_QR);
-		panel_QR.setLayout(new GridLayout(0, 1, 0, 0));
-		
-		panel_Q = new JPanel();
-		panel_QR.add(panel_Q);
-		panel_Q.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		
-		// Check box for drawing the transformation with Q
-		checkBox_Q = new JCheckBox("");
-		checkBox_Q.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				if(checkBox_Q.isSelected())
-				{
-					createQPlot();
-				}
-				else
-				{
-					if(qPlot != null) outplotPanel.removePlot(qPlot);
-				}
-			}
-		});
-		panel_Q.add(checkBox_Q);
-		
-		label_Q = new JLabel("Q = ");
-		panel_Q.add(label_Q);
-		
-		table_Q = new JTable();
-		panel_Q.add(table_Q);
-		table_Q.setModel(new DefaultTableModel(
-			new Object[][] {
-				{null, null, null},
-				{null, null, null},
-				{null, null, null},
-			},
-			new String[] {
-				"", "", ""
-			}
-		) {
-			Class[] columnTypes = new Class[] {
-				Double.class, Double.class, Double.class
-			};
-			public Class getColumnClass(int columnIndex) {
-				return columnTypes[columnIndex];
-			}
-		});
-		table_Q.getColumnModel().getColumn(0).setPreferredWidth(45);
-		table_Q.getColumnModel().getColumn(1).setPreferredWidth(45);
-		table_Q.getColumnModel().getColumn(2).setPreferredWidth(45);
-		
-		panel_R = new JPanel();
-		panel_QR.add(panel_R);
-		
-		// Check box for drawing the transformation with R
-		checkBox_R = new JCheckBox("");
-		checkBox_R.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if(checkBox_R.isSelected())
-				{
-					createRPlot();
-				}
-				else
-				{
-					if(rPlot != null) outplotPanel.removePlot(rPlot);
-				}
-			}
-		});
-		panel_R.add(checkBox_R);
-		
-		
-		label_R = new JLabel("R = ");
-		panel_R.add(label_R);
-		
-		table_R = new JTable();
-		table_R.setModel(new DefaultTableModel(
-			new Object[][] {
-				{null, null, null},
-				{null, null, null},
-				{null, null, null},
-			},
-			new String[] {
-				"", "", ""
-			}
-		) {
-			Class[] columnTypes = new Class[] {
-				Double.class, Double.class, Double.class
-			};
-			public Class getColumnClass(int columnIndex) {
-				return columnTypes[columnIndex];
-			}
-		});
-		table_R.getColumnModel().getColumn(0).setPreferredWidth(45);
-		table_R.getColumnModel().getColumn(1).setPreferredWidth(45);
-		table_R.getColumnModel().getColumn(2).setPreferredWidth(45);
-		panel_R.add(table_R);
-		
-		// initialize gui
-		button_transform = new JButton("Transform");
-		GridBagConstraints gbc_button_transform = new GridBagConstraints();
-		gbc_button_transform.anchor = GridBagConstraints.WEST;
-		gbc_button_transform.insets = new Insets(0, 0, 5, 5);
-		gbc_button_transform.gridx = 0;
-		gbc_button_transform.gridy = 3;
-		panel.add(button_transform, gbc_button_transform);
-		button_transform.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				transform();
-				syncAxesBounds();
-				
-				// QR decomposition
-				double[][] matrix = new double[3][3];
-				for(int i = 0; i < 3; i++)
-				{
-					for(int j = 0; j < 3 ; j++)
-					{
-						matrix[i][j] = transformationMatrix[i][j];
-					}
-				}
-				qrdecomposition = new QRDecomposition3x3(matrix);				
-				updateInfo();
-			}
-		});
-
-		textArea_info = new JTextArea();
-		textArea_info.setOpaque(false);
-		textArea_info.setEditable(false);
-		GridBagConstraints gbc_textArea_info = new GridBagConstraints();
-		gbc_textArea_info.fill = GridBagConstraints.BOTH;
-		gbc_textArea_info.anchor = GridBagConstraints.NORTHWEST;
-		gbc_textArea_info.insets = new Insets(0, 0, 5, 5);
-		gbc_textArea_info.gridx = 1;
-		gbc_textArea_info.gridy = 2;
-		panel.add(textArea_info, gbc_textArea_info);
-
-		// testing with 45 degree rotation
-		transformationMatrix = new double[][] { 
-				{ 1, 0, 0, 0 },
-				{ 0, 1, 0, 0 }, 
-				{ 0, 0, 1, 0 },
-				{ 0, 0, 0, 1 }};
-
-		// create your PlotPanel (you can use it as a JPanel)
-		initinplotPanel();
-		initoutplotPanel();
-		
-		delaunay = new Delaunay_Triangulation();
-		
-		getContentPane().add(inplotPanel, "cell 0 1 2 1,alignx center,aligny center");
-		getContentPane().add(outplotPanel, "cell 2 1,alignx center,aligny center");
-		comboBox_surfaces.setSelectedIndex(0);
 	}
-	
 	
 	/**
 	 * Initialize outplotPanel
@@ -425,6 +470,7 @@ public class RipMathApplet extends JApplet {
 		outplotPanel.setPreferredSize(new Dimension(400,420));
 		outplotPanel.plotCanvas.getGrid().setVisible(false);
 		outplotPanel.removeLegend();
+		getContentPane().add(outplotPanel, "cell 2 1,alignx center,aligny center");
 	}
 	
 	
@@ -437,6 +483,7 @@ public class RipMathApplet extends JApplet {
 		inplotPanel.setPreferredSize(new Dimension(400,420));
 		inplotPanel.plotCanvas.getGrid().setVisible(false);
 		inplotPanel.removeLegend();
+		getContentPane().add(inplotPanel, "cell 0 1 2 1,alignx center,aligny center");
 	}
 	
 	/**
@@ -779,8 +826,9 @@ public class RipMathApplet extends JApplet {
 	public void updateInfo() {
 		double[][] tmpMatrix;
 		
+		TransformMode choice = (TransformMode) comboBox_transform.getSelectedItem();
 		// linear
-		if(this.comboBox_transform.getSelectedIndex() == 0)
+		if(choice.equals(TransformMode.LINEAR))
 		{
 			tmpMatrix = new double[3][3];
 			for(int i = 0; i < 3; i++)
@@ -813,6 +861,17 @@ public class RipMathApplet extends JApplet {
 				table_R.setValueAt(qrdecomposition.R[i][j], i, j);
 			}
 		}
+		
+		// update Q and R transform plots if the check boxes are selected
+		if(checkBox_Q.isSelected())
+		{
+			createQPlot();
+		}
+		
+		if(checkBox_R.isSelected())
+		{
+			createRPlot();
+		}
 	}
 
 	/**
@@ -820,7 +879,7 @@ public class RipMathApplet extends JApplet {
 	 * @param expression
 	 * @return a double integer resulted from the evaluation of the expession
 	 */
-	public static double parseAndEvaluate(String expression) throws NumberFormatException{
+	public double parseAndEvaluate(String expression) throws NumberFormatException{
 		String strd = psr.parse(expression);
 		
 		/*/ Debug parser with variable
@@ -843,7 +902,8 @@ public class RipMathApplet extends JApplet {
 	private Color[] mapColor(double[][] points) {
 		Color[] colorMap = new Color[points.length];
 
-		if(this.comboBox_surfaces.getSelectedIndex() == 1)
+		Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
+		if(choice.equals(Surface.CUBE))
 		{
 			int d = points.length / 6;
 			for(int i = 0; i < points.length; i++)
