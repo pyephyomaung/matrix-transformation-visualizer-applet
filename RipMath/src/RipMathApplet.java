@@ -102,24 +102,45 @@ public class RipMathApplet extends JApplet {
 	private JCheckBox checkBox_R;
 	private JPanel panel_transformOption;
 	private JCheckBox checkBox_useVariables;
+	private JPanel panel_surfaceOption;
+	private JLabel lblChooseASurface;
 	
+	/**
+	 * Enumeration of predefined surfaces
+	 */
 	public enum Surface
 	{
 		PLANE, CUBE, SPHERE 
 	}
 	
+	/**
+	 * Enumeration of transformMode
+	 */
 	public enum TransformMode
 	{
 		LINEAR, AFFINE
 	}
+	
+	public static void main(String[] args)
+	{
+		RipMathApplet app = new RipMathApplet();
+		app.start();
+	}
 
 	/**
-	 * Create the applet.
+	 * Constructor for the applet
 	 */
 	public RipMathApplet() {
+		// Initialize inner representation of transformation matrix
+		transformationMatrix = new double[][] { 
+				{ 1, 0, 0, 0 },
+				{ 0, 1, 0, 0 }, 
+				{ 0, 0, 1, 0 },
+				{ 0, 0, 0, 1 }};
+		
 		// set layout of the applet
 		getContentPane().setLayout(
-				new MigLayout("", "[][300.00px,grow][grow][]", "[][400.00,grow,top][400.00,grow]"));
+				new MigLayout("", "[320.00px][320.00px]", "[][340.00px][]"));
 
 		// Initialize GUI cocmponents of plots
 		initGUI_plots();
@@ -127,7 +148,7 @@ public class RipMathApplet extends JApplet {
 		// Initialize the main panel that contains GUIs for transform and QR matrices
 		panel = new JPanel();
 		JScrollPane panelScroller = new JScrollPane(panel);
-		getContentPane().add(panelScroller, "cell 1 2 2 1,grow");
+		getContentPane().add(panelScroller, "cell 0 2 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
 		gbl_panel.columnWidths = new int[] { 200, 0, 0, 0 };
 		gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 24 };
@@ -141,26 +162,25 @@ public class RipMathApplet extends JApplet {
 		// Initialize GUI components of QR
 		initGUI_QR();
 
-		// Initialize inner representation of transformation matrix
-		transformationMatrix = new double[][] { 
-				{ 1, 0, 0, 0 },
-				{ 0, 1, 0, 0 }, 
-				{ 0, 0, 1, 0 },
-				{ 0, 0, 0, 1 }};
-
 		delaunay = new Delaunay_Triangulation();
-		
 		comboBox_surfaces.setSelectedIndex(0);
 	}
 	
 	private void initGUI_plots()
 	{
 		// Initialize the combo box for selecting a surface
+		panel_surfaceOption = new JPanel();
+		getContentPane().add(panel_surfaceOption, "cell 0 0 2 1,grow");
+		panel_surfaceOption.setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		
+		lblChooseASurface = new JLabel("Choose a surface: ");
+		panel_surfaceOption.add(lblChooseASurface);
+
 		comboBox_surfaces = new JComboBox();
 		comboBox_surfaces.setModel(new DefaultComboBoxModel(Surface.values()));
-		comboBox_surfaces.setEditable(false);
+		comboBox_surfaces.setEditable(true);
 		comboBox_surfaces.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
@@ -170,15 +190,15 @@ public class RipMathApplet extends JApplet {
 				case CUBE:	data = generateCube(); break;
 				case SPHERE: data = generateSphere(); break;
 				}
-				
+
 				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
 				outplotPanel.removeAllPlots();
-				
+
 				createinplotPanel();
 			}
 		});
-		getContentPane().add(comboBox_surfaces, "cell 1 0");
-		
+		panel_surfaceOption.add(comboBox_surfaces);
+				
 		// create your PlotPanel (you can use it as a JPanel)
 		initinplotPanel();
 		initoutplotPanel();
@@ -467,10 +487,11 @@ public class RipMathApplet extends JApplet {
 	private void initoutplotPanel()
 	{
 		outplotPanel = new Plot3DPanel();
-		outplotPanel.setPreferredSize(new Dimension(400,420));
+		outplotPanel.setPreferredSize(new Dimension(300, 320));
 		outplotPanel.plotCanvas.getGrid().setVisible(false);
 		outplotPanel.removeLegend();
-		getContentPane().add(outplotPanel, "cell 2 1,alignx center,aligny center");
+		outplotPanel.plotToolBar.setPreferredSize(new Dimension(300, 24));
+		getContentPane().add(outplotPanel, "cell 1 1,alignx center,aligny center");
 	}
 	
 	
@@ -480,10 +501,12 @@ public class RipMathApplet extends JApplet {
 	private void initinplotPanel()
 	{
 		inplotPanel = new Plot3DPanel();
-		inplotPanel.setPreferredSize(new Dimension(400,420));
+		inplotPanel.setPreferredSize(new Dimension(300, 320));
 		inplotPanel.plotCanvas.getGrid().setVisible(false);
 		inplotPanel.removeLegend();
-		getContentPane().add(inplotPanel, "cell 0 1 2 1,alignx center,aligny center");
+	
+		getContentPane().add(inplotPanel, "cell 0 1,alignx center,aligny center");
+		inplotPanel.plotToolBar.setPreferredSize(new Dimension(200, 24));
 	}
 	
 	/**
@@ -494,6 +517,13 @@ public class RipMathApplet extends JApplet {
 		inplotPanel.removeAllPlots();
 		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
 		inplotPanel.addPlot(scatterPlot_in);
+		
+		/*/ Debug
+		CubePlot3D testPlot = new CubePlot3D("", Color.RED, 
+				CubePlot3D.ORIGINAL, 2, 2, 2);
+		data = testPlot.getData();
+		inplotPanel.addPlot(testPlot);
+		*/
 		
 		// create axes
 		inMinBounds = inplotPanel.plotCanvas.base.getMinBounds();
