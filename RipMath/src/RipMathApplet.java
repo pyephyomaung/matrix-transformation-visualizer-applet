@@ -1,7 +1,4 @@
-import static org.math.array.DoubleArray.increment;
-
 import java.awt.Color;
-
 import javax.swing.JApplet;
 import net.miginfocom.swing.MigLayout;
 
@@ -9,18 +6,11 @@ import net.miginfocom.swing.MigLayout;
 
 // JMathPlot
 import org.math.plot.Plot3DPanel;
-import org.math.plot.canvas.PlotCanvas;
-import org.math.plot.plotObjects.Axis;
-import org.math.plot.plotObjects.Base;
-import org.math.plot.plotObjects.BaseLine;
-import org.math.plot.plots.GridPlot3D;
 import org.math.plot.plots.LinePlot;
 import org.math.plot.plots.Plot;
 import org.math.plot.plots.ScatterPlot;
 
 import parser.*;
-
-import delaunay_triangulation.Delaunay_Triangulation;
 
 // JMathArray
 import static org.math.array.LinearAlgebra.*;
@@ -54,20 +44,14 @@ import java.awt.FlowLayout;
 import javax.swing.JLabel;
 import java.awt.GridLayout;
 import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 
 /**
  * @author Pye Phyo Maung
  * 
  */
 public class RipMathApplet extends JApplet {
-	private static final double[][] XYdX = null;
 	private Plot3DPanel inplotPanel;
 	private Plot3DPanel outplotPanel;
-	private CustomizedScatteredPlot scatterPlot_in;
-	private CustomizedScatteredPlot scatterPlot_out;
-	private double[][] data;
-	private Color[] colorMap;
 	private Parser psr = new Parser();
 	private JTable TransformationMatrixTable;
 	private double[][] transformationMatrix;
@@ -76,12 +60,13 @@ public class RipMathApplet extends JApplet {
 	private JPanel panel;
 	private JComboBox comboBox_surfaces;
 	private JComboBox comboBox_transform;
-	private Delaunay_Triangulation delaunay;
 	private QRDecomposition3x3 qrdecomposition;
 	
 	private Plot xAxis;
 	private Plot yAxis;
 	private Plot zAxis;
+	private Plot inplot;
+	private Plot outplot;
 	private Plot qPlot;
 	private Plot rPlot;
 	
@@ -162,7 +147,6 @@ public class RipMathApplet extends JApplet {
 		// Initialize GUI components of QR
 		initGUI_QR();
 
-		delaunay = new Delaunay_Triangulation();
 		comboBox_surfaces.setSelectedIndex(0);
 	}
 	
@@ -184,16 +168,32 @@ public class RipMathApplet extends JApplet {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
+				
+				/*/ debug
+				if(comboBox_surfaces.getSelectedIndex() == 3)
+				{
+					inplotPanel.removeAllPlots();
+					//Plot sphere = new SpherePlot3D("", Color.BLUE);
+					Plot plane = new CubePlot3DJME("", Color.BLUE);
+					inplotPanel.addPlot(plane);
+					return;
+				}
+				*/
+				
 				switch(choice)
 				{
-				case PLANE:	data = generatePlane(); break;
-				case CUBE:	data = generateCube(); break;
-				case SPHERE: data = generateSphere(); break;
+				case PLANE:	
+					inplot = new PlanePlot3D();
+					break;
+				case CUBE:	
+					inplot = new CubePlot3D();
+					break;
+				case SPHERE: 
+					inplot = new SpherePlot3D();
+					break;
 				}
-
-				if(comboBox_surfaces.getSelectedIndex() != 1) colorMap = mapColor(data);
+				
 				outplotPanel.removeAllPlots();
-
 				createinplotPanel();
 			}
 		});
@@ -470,10 +470,10 @@ public class RipMathApplet extends JApplet {
 				return columnTypes[columnIndex];
 			}
 		});
-		TransformationMatrixTable.getColumnModel().getColumn(0).setPreferredWidth(45);
-		TransformationMatrixTable.getColumnModel().getColumn(1).setPreferredWidth(45);
-		TransformationMatrixTable.getColumnModel().getColumn(2).setPreferredWidth(45);
-		TransformationMatrixTable.getColumnModel().getColumn(3).setPreferredWidth(45);
+		TransformationMatrixTable.getColumnModel().getColumn(0).setPreferredWidth(75);
+		TransformationMatrixTable.getColumnModel().getColumn(1).setPreferredWidth(75);
+		TransformationMatrixTable.getColumnModel().getColumn(2).setPreferredWidth(75);
+		TransformationMatrixTable.getColumnModel().getColumn(3).setPreferredWidth(75);
 		
 		TransformationMatrixTable.getColumnModel().getColumn(0).setCellRenderer(new ColoredCellRenderer());
 		TransformationMatrixTable.getColumnModel().getColumn(1).setCellRenderer(new ColoredCellRenderer());
@@ -515,8 +515,7 @@ public class RipMathApplet extends JApplet {
 	private void createinplotPanel()
 	{
 		inplotPanel.removeAllPlots();
-		scatterPlot_in = new CustomizedScatteredPlot("original", colorMap, data);
-		inplotPanel.addPlot(scatterPlot_in);
+		inplotPanel.addPlot(inplot);
 		
 		/*/ Debug
 		CubePlot3D testPlot = new CubePlot3D("", Color.RED, 
@@ -539,7 +538,7 @@ public class RipMathApplet extends JApplet {
 	{
 		removeAxes(outplotPanel);
 		if(qPlot != null) outplotPanel.removePlot(qPlot);
-		double[][] qTransformData = transpose(times(qrdecomposition.Q, transpose(data)));
+		double[][] qTransformData = transpose(times(qrdecomposition.Q, transpose(inplot.getData())));
 		qPlot = new ScatterPlot("", Color.lightGray, qTransformData);
 		outplotPanel.addPlot(qPlot);
 		addAxes(outplotPanel);
@@ -549,7 +548,7 @@ public class RipMathApplet extends JApplet {
 	{
 		removeAxes(outplotPanel);
 		if(rPlot != null) outplotPanel.removePlot(rPlot);
-		double[][] rTransformData = transpose(times(qrdecomposition.R, transpose(data)));
+		double[][] rTransformData = transpose(times(qrdecomposition.R, transpose(inplot.getData())));
 		rPlot = new ScatterPlot("", Color.CYAN, rTransformData);
 		outplotPanel.addPlot(rPlot);
 		addAxes(outplotPanel);
@@ -574,6 +573,10 @@ public class RipMathApplet extends JApplet {
 	 */
 	public void syncAxesBounds()
 	{
+		// update inplot bounds
+		inMinBounds = inplotPanel.plotCanvas.base.getMinBounds();
+		inMaxBounds = inplotPanel.plotCanvas.base.getMaxBounds();
+		
 		// draw axes for outplotPanel
 		double[] outMinBounds = outplotPanel.plotCanvas.base.getMinBounds();
 		double[] outMaxBounds = outplotPanel.plotCanvas.base.getMaxBounds();
@@ -638,100 +641,6 @@ public class RipMathApplet extends JApplet {
 		}
 	}
 	
-	
-	/**
-	 * @return uniformly distributed scattered points of 
-	 * a sphere of radius 1 centered at origin
-	 */
-	private double[][] generateSphere() {	
-		int numPoints = 5000;	// number of scattered points
-	    double[][] points = new double[numPoints][3];
-	    double inc = Math.PI * (3 - Math.sqrt(5));
-	    double off = (double) 2 / numPoints;
-	    double x, y, z, r, phi;
-	 
-	    for (int k = 0; k < numPoints; k++){
-	        y = k * off - 1 + (off /2);
-	        r = Math.sqrt(1 - y * y);
-	        phi = k * inc;
-	        x = Math.cos(phi) * r;
-	        z = Math.sin(phi) * r;
-	 
-	        points[k] = new double[] {x, y, z};
-	    }
-				
-	    return points;
-	}
-	
-	/**
-	 * @return scattered points of a plane defined in f
-	 */
-	public double[][] generatePlane()
-	{
-		// define your data
-		double[] x = increment(-5.0, 0.2, 5.0);
-		double[] y = increment(-5.0, 0.2, 5.0);
-		double[][] z = f(x, y);
-				
-		GridPlot3D plane = new GridPlot3D("", Color.BLACK, x, y, z);
-		return plane.getData();
-	}
-	
-	/**
-	 * @return scattered points of a cube
-	 */
-	public double[][] generateCube()
-	{
-		double[] x = increment(-0.5, 0.05, 0.5);
-	    double[] y = increment(-0.5, 0.05, 0.5);
-	    int sideSize = x.length * y.length;
-	    double[][] points = new double[sideSize * 2 * 6][3];
-	    colorMap = new Color[points.length];
-	    
-	    int index = 0;
-	    double a, b, c, d;
-	    
-	    a = 0; b = 0; c = 1; d = 0.5;
-	    for(int axis = 0; axis < 3; axis++)
-	    {
-		    for (int i = 0; i < x.length; i++)
-		    {
-				for (int j = 0; j < y.length; j++)
-				{
-					double tmpZ_side1 = -(d + a*x[i] + b*y[j])/c;
-					double tmpZ_side2 = -(d * -1 + a*x[i] + b*y[j])/c;
-					
-					switch(axis)
-					{
-					case 0:
-						points[index] = new double[] {x[i], y[j], tmpZ_side1};
-						colorMap[index] = Color.BLUE; 
-						index++;
-						points[index] = new double[] {x[i], y[j], tmpZ_side2};
-						colorMap[index] = Color.GREEN;
-						index++;
-					case 1:
-						points[index] = new double[] {x[i], tmpZ_side1, y[j]};
-						colorMap[index] = Color.MAGENTA;
-						index++;
-						points[index] = new double[] {x[i], tmpZ_side2, y[j]};
-						colorMap[index] = Color.ORANGE;
-						index++;
-					case 2:
-						points[index] = new double[] {tmpZ_side1, x[i], y[j]};
-						colorMap[index] = Color.PINK;
-						index++;
-						points[index] = new double[] {tmpZ_side2, x[i], y[j]};
-						colorMap[index] = Color.RED;
-						index++;
-					}
-				}
-			}
-	    }
-	    
-	    return points;
-	}
-	
 	/**
 	 * Find eigen values of a matrix
 	 * @param matrix a two-dimensional array representing a matrix
@@ -766,7 +675,7 @@ public class RipMathApplet extends JApplet {
 			// double start = System.nanoTime();	// debug
 			
 			// append dummy column vector
-			double[][] points4D = insertColumns(data, 3, one(data.length));
+			double[][] points4D = insertColumns(inplot.getData(), 3, one(inplot.getData().length));
 			
 			// Get transformed points
 			double[][] transformedData;
@@ -787,9 +696,26 @@ public class RipMathApplet extends JApplet {
 	
 			// plot the transformed (output) data
 			outplotPanel.removeAllPlots();	// remove the current output plot
-			scatterPlot_out = new CustomizedScatteredPlot("transformed", colorMap,
-					transformedData);
-			outplotPanel.addPlot(scatterPlot_out);
+			
+			Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
+			switch(choice)
+			{
+			case PLANE:
+				PlanePlot3D tmpPlanePlot = (PlanePlot3D) inplot;
+				outplot = new CustomPlot3D("", transformedData, tmpPlanePlot.getColorMap_Points());
+				break;
+			case CUBE:
+				CubePlot3D tmpCubePlot = (CubePlot3D) inplot;
+				outplot = new CustomPlot3D("", transformedData, tmpCubePlot.getColorMap_Points());
+				break;
+			case SPHERE:
+				SpherePlot3D tmpSpherePlot = (SpherePlot3D) inplot;
+				outplot = new CustomPlot3D("", 
+						transformedData, tmpSpherePlot.getIndices(), 
+						tmpSpherePlot.getColorMap_Points(), tmpSpherePlot.getColorMap_Triangles());
+				break;
+			}
+			outplotPanel.addPlot(outplot);
 		}
 		catch(NumberFormatException e)
 		{
@@ -846,7 +772,7 @@ public class RipMathApplet extends JApplet {
 			result[count] = times(transformationMatrix, tmpPt);
 		}
 		
-		return result;
+		return deleteColumns(result, 3);
 	}
 	
 	/**
@@ -922,79 +848,6 @@ public class RipMathApplet extends JApplet {
 		tokenizer.nextToken();
 		Double d = Double.valueOf(tokenizer.nextToken());
 		return d;
-	}
-
-	/**
-	 * Map colors to points
-	 * @param points
-	 * @return an array color mapping to each point
-	 */
-	private Color[] mapColor(double[][] points) {
-		Color[] colorMap = new Color[points.length];
-
-		Surface choice = (Surface) comboBox_surfaces.getSelectedItem();
-		if(choice.equals(Surface.CUBE))
-		{
-			int d = points.length / 6;
-			for(int i = 0; i < points.length; i++)
-			{
-				if(i < (d * 2)) colorMap[i] = Color.BLUE;
-				else if(i < (d * 4)) colorMap[i] = Color.RED;
-				
-			}
-			return colorMap;
-		}
-		
-		double[] xCoords = getColumnCopy(points, 0); // get the x coordinates
-		double[] yCoords = getColumnCopy(points, 1); // get the y coordinates
-		//double[] zCoords = getColumnCopy(points, 2); // get the z coordinates
-
-		double xMin = min(xCoords);
-		double xMax = max(xCoords);
-		double xRange = xMax - xMin;
-
-		double yMin = min(yCoords);
-		double yMax = max(yCoords);
-		double yRange = yMax - yMin;
-		/*
-		 double zMin = min(zCoords);
-		 double zMax = max(zCoords);
-		 double zRange = zMax - zMin;
-		 */
-		for (int i = 0; i < points.length; i++) {
-			int R = (int) ((255 / xRange) * (points[i][0] - xMin));
-			int G = (int) ((255 / yRange) * (points[i][1] - yMin));
-			//int B = (int) ((255/zRange) * (points[i][2] - zMin));
-			colorMap[i] = new Color(R, G, 128);
-		}
-
-		return colorMap;
-	}
-
-	
-	/**
-	 * Function definition
-	 * @param x
-	 * @param y
-	 * @return a double integer
-	 */
-	public static double f(double x, double y) {
-		double z = x;
-		return z;
-	}
-
-	/**
-	 * Grid version of the function f to be used for grid plot
-	 * @param x
-	 * @param y
-	 * @return
-	 */
-	public static double[][] f(double[] x, double[] y) {
-		double[][] z = new double[y.length][x.length];
-		for (int i = 0; i < x.length; i++)
-			for (int j = 0; j < y.length; j++)
-				z[j][i] = f(x[i], y[j]);
-		return z;
 	}
 	
 	/**

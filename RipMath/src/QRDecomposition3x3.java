@@ -1,4 +1,5 @@
 import static org.math.array.LinearAlgebra.*;
+import la4j.err.MatrixDecompositionException;
 import Jama.Matrix;
 import Jama.QRDecomposition;
 import Jama.util.Maths;
@@ -33,10 +34,32 @@ public class QRDecomposition3x3 {
 		}
 		*/
 		
+		/* QR decompositon using JAMA
 		Jama.Matrix MatrixA = new Jama.Matrix(A);
 		Jama.QRDecomposition jamaQRDecomposition = new Jama.QRDecomposition(MatrixA);
 		Q = jamaQRDecomposition.getQ().getArray();
 		R = jamaQRDecomposition.getR().getArray();
+		*/
+		
+		
+		// QR decomposition using la4j
+		la4j.factory.DenseFactory denseFactory = new la4j.factory.DenseFactory();
+		la4j.matrix.Matrix A_matrix = denseFactory.createMatrix(A);
+		
+		try {
+			la4j.matrix.Matrix[] qr = A_matrix.decompose(new la4j.decomposition.QRDecompositor());
+			Q = qr[0].toArray();
+			R = qr[1].toArray();
+			
+			/* Debug
+			double[][] la4j_q = qr[0].toArray();
+			double[][] la4j_r = qr[1].toArray();
+			System.out.println("la4j_q: \n" + RipMathApplet.format(la4j_q));
+			System.out.println("la4j_r: \n" + RipMathApplet.format(la4j_r));
+			*/
+		} catch (MatrixDecompositionException e) {
+			e.printStackTrace();
+		}
 		
 		/*
 		if(det(Q) == -1.0)
