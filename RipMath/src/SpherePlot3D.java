@@ -2,10 +2,14 @@ import java.awt.Color;
 import org.math.plot.plots.Plot;
 import org.math.plot.render.AbstractDrawer;
 
+/**
+ * @author Pye Phyo Maung
+ *
+ */
 public class SpherePlot3D extends Plot {
 	public boolean draw_lines = true;
 	public boolean fill_shape = false;
-	public boolean draw_dots = false;
+	public boolean draw_dots = true;
 	
 	public int numPoints = 1000;
 	public double[][] points;

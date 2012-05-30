@@ -6,12 +6,15 @@ import org.math.plot.plots.GridPlot3D;
 import org.math.plot.plots.Plot;
 import org.math.plot.render.AbstractDrawer;
 
+/**
+ * @author Pye Phyo Maung
+ *
+ */
 public class PlanePlot3D extends Plot {
 	public boolean draw_lines = false;
 	public boolean fill_shape = false;
 	public boolean draw_dots = true;
 	
-	public int numPoints = 1000;
 	public double[][] points;
 	public int[] indices;
 	public Color[] colorMap_Points;
