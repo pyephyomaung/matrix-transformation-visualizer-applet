@@ -160,6 +160,8 @@ public class RipMathApplet extends JApplet {
 		initGUI_TabbedPanel();
 
 		comboBox_surfaces.setSelectedIndex(0);
+		textArea_info.setText("Press \"Transform\" to generate information");
+		tabbedPane.setEnabled(false);
 	}
 	
 	private void initGUI_plots()
@@ -217,7 +219,7 @@ public class RipMathApplet extends JApplet {
 	}
 	
 	private void initGUI_transform()
-	{		
+	{	
 		panel_transform = new JPanel();
 		GridBagConstraints gbc_panel_transform = new GridBagConstraints();
 		gbc_panel_transform.insets = new Insets(0, 0, 0, 5);
@@ -345,6 +347,9 @@ public class RipMathApplet extends JApplet {
 		gbc_tabbedPane.gridx = 1;
 		gbc_tabbedPane.gridy = 0;
 		panel.add(tabbedPane, gbc_tabbedPane);
+		
+		// disable tabbed pane for displaying information
+		tabbedPane.setEnabled(false);
 
 		// add a tab for displaying info
 		JPanel panel_info = new JPanel();
@@ -824,6 +829,9 @@ public class RipMathApplet extends JApplet {
 	 * The transformation can be either linear or affine
 	 */
 	public void transform() {
+		// Enable tabbed pane for displaying information
+		tabbedPane.setEnabled(true);
+		
 		boolean hasVariable = false;
 		for (int i = 0; i < 4; i++) 
 		{
@@ -980,25 +988,31 @@ public class RipMathApplet extends JApplet {
 				+ "Eigen Value:\t" + format(eigenValues, ", ") + "\n" 
 				+ "Rank:\t" + rank);
 		
-		// update Q and R matrices
-		for(int i = 0; i < 3; i++)
-		{
-			for(int j = 0; j < 3; j++)
+		
+		try {
+			// update Q and R matrices
+			for(int i = 0; i < 3; i++)
 			{
-				table_Q.setValueAt(qrdecomposition.Q[i][j], i, j);
-				table_R.setValueAt(qrdecomposition.R[i][j], i, j);
+				for(int j = 0; j < 3; j++)
+				{
+					table_Q.setValueAt(qrdecomposition.Q[i][j], i, j);
+					table_R.setValueAt(qrdecomposition.R[i][j], i, j);
+				}
 			}
-		}
-		
-		// update Q and R transform plots if the check boxes are selected
-		if(checkBox_Q.isSelected())
-		{
-			createQPlot();
-		}
-		
-		if(checkBox_R.isSelected())
-		{
-			createRPlot();
+			
+			// update Q and R transform plots if the check boxes are selected
+			if(checkBox_Q.isSelected())
+			{
+				createQPlot();
+			}
+			
+			if(checkBox_R.isSelected())
+			{
+				createRPlot();
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 

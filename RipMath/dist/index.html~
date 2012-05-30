@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Transformation Matrices and QR Decomposition</title>
+		<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+		</script>
+	</head>
+  
+	<body>
+		<h1>Transformation Matrices and QR Decomposition</h1>
+		<div align="center">
+		<br/>
+
+		<applet code="RipMathApplet.class" archive="RipMath.jar,jmatharray.jar,jmathplot.jar,miglayout15-swing.jar,forms-1.3.0.jar,la4j-0.2.0.jar,jME3-core.jar" width=640 height=480>
+		</applet>
+		</div>
+
+		<article>
+			<h1>Description</h1>
+			<p>The applet illustrates the actions of linear and affine transformations from \( \mathbb{R}^3 \) to \( \mathbb{R}^3 \) and QR Decomposition of the transformation matrix.</p>
+		
+			<section>
+				<h2>Linear Transformation</h2>
+				<p>\( \begin{bmatrix}x\\y\\z\end{bmatrix} \)</p>
+			</section>
+			
+			<section>
+				<h2>Affine Transformation</h2>
+				<p></p>
+			</section>
+					
+			<section>
+				<h2>QR Decomposition</h2>
+				<p><b>Theorem</b></p>
+				<p><i>Let \(A\) be</i></p>
+			</section>
+		</article>
+	</body>
+</html>
