@@ -1,5 +1,9 @@
 import java.awt.Color;
+import java.util.ArrayList;
+
 import static org.math.array.DoubleArray.increment;
+
+import org.math.array.DoubleArray;
 import org.math.plot.plots.Plot;
 import org.math.plot.render.AbstractDrawer;
 
@@ -13,6 +17,7 @@ public class CubePlot3D extends Plot {
 	public boolean draw_dots = true;
 	
 	public double[][] points;
+	private double[][] edgePoints; // separated from points for performance
 	public int[] indices;
 	public Color[] colorMap_Points;
 	public Color[] colorMap_Triangles;
@@ -20,6 +25,24 @@ public class CubePlot3D extends Plot {
 	public CubePlot3D() {
 		super("", Color.black);
 		generateCube();
+	}
+	
+	public CubePlot3D(String label, double[][] _points, double[][] _edgePoints, Color[] _colorMap_Points)
+	{
+		super(label, Color.black);
+		points = _points;
+		edgePoints = _edgePoints;
+		colorMap_Points = _colorMap_Points;
+	}
+	
+	public void setEdgePoints(double[][] _edgePoints)
+	{
+		edgePoints = _edgePoints;
+	}
+	
+	public double[][] getEdgePoints()
+	{
+		return edgePoints;
 	}
 	
 	@Override
@@ -99,6 +122,66 @@ public class CubePlot3D extends Plot {
 				}
 			}
 	    }
+	    
+	    /*add edges (hard coded)
+	     * 
+	     * **Note to self
+	     * The parametric equation for each edge can be written:p = [x y z] = v1 + e(v2-v1), 
+	     * where v1 and v2 are the coordinates of the vertices at each end of the edge. 
+	     * e = is a real-number which is the fractional distance along the edge: 
+	     * a value: 0 <= e <= 1 means that the given point is on the edge. 
+	     *
+	     */
+	    double[] tmpInc = increment(-1.0f, 0.1, 1.0f);
+	    ArrayList<double[]> edgePointsList = new ArrayList<double[]>();
+	    double[] v1;
+		double[] v2;
+		double e;
+	    for (int i = 0; i < tmpInc.length; i++)
+	    {
+	    		// using x axis
+				v1 = new double[] {1, 0, 0};
+				v2 = new double[] {-1, 0, 0};
+				e = dist(new double[] {tmpInc[i], 0, 0}, v1) / dist(v1, v2);
+				
+				edgePointsList.add(new double[] {v1[0] + e * (v2[0]-v1[0]), -1, 1});
+				edgePointsList.add(new double[] {v1[0] + e * (v2[0]-v1[0]), 1, 1});
+				edgePointsList.add(new double[] {v1[0] + e * (v2[0]-v1[0]), -1, -1});
+				edgePointsList.add(new double[] {v1[0] + e * (v2[0]-v1[0]), 1, -1});
+				
+				// using y axis
+				v1 = new double[] {0, -1, 0};
+				v2 = new double[] {0, 1, 0};
+				e = dist(new double[] {0, tmpInc[i], 0}, v1) / dist(v1, v2);
+				
+				edgePointsList.add(new double[] {-1, v1[1] + e * (v2[1]-v1[1]), 1});
+				edgePointsList.add(new double[] {1, v1[1] + e * (v2[1]-v1[1]), 1});
+				edgePointsList.add(new double[] {-1, v1[1] + e * (v2[1]-v1[1]), -1});
+				edgePointsList.add(new double[] {1, v1[1] + e * (v2[1]-v1[1]), -1});
+				
+				// using z axis
+				v1 = new double[] {0, 0, -1};
+				v2 = new double[] {0, 0, 1};
+				e = dist(new double[] {0, 0, tmpInc[i]}, v1) / dist(v1, v2);
+				edgePointsList.add(new double[] {-1, 1, v1[2] + e * (v2[2]-v1[2])});
+				edgePointsList.add(new double[] {1, 1, v1[2] + e * (v2[2]-v1[2])});
+				edgePointsList.add(new double[] {-1, -1, v1[2] + e * (v2[2]-v1[2])});
+				edgePointsList.add(new double[] {1, -1, v1[2] + e * (v2[2]-v1[2])});
+	    }
+	    
+	    edgePoints = edgePointsList.toArray(new double[edgePointsList.size()][]);
+	}
+	
+	public double dist(double[] v1, double[] v2)
+	{
+		assert(v1.length == v2.length);
+		double sum = 0;
+		for(int i = 0; i < v1.length; i++)
+		{
+			sum += (v2[i]-v1[i]) * (v2[i]-v1[i]);
+		}
+		
+		return Math.sqrt(sum);
 	}
 	
 	/**
@@ -171,10 +254,18 @@ public class CubePlot3D extends Plot {
 		
 		if(draw_dots)
 		{
+			// draw surface
 			for(int i = 0; i < points.length; i++)
 			{
 				draw.setColor(colorMap_Points[i]);
 				draw.drawDot(points[i]);
+			}
+			
+			// draw edge
+			draw.setColor(Color.BLACK);
+			for(int i = 0; i < edgePoints.length; i++)
+			{
+				draw.drawDot(edgePoints[i]);
 			}
 		}
 		

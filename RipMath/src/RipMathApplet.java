@@ -614,7 +614,9 @@ public class RipMathApplet extends JApplet {
 				break;
 			case CUBE:
 				CubePlot3D tmpCubePlot = (CubePlot3D) inplot;
-				qPlot = new CustomPlot3D("", qTransformData, tmpCubePlot.getColorMap_Points());
+				// special case
+				double[][] qTransformEdgeData = transpose(times(qrdecomposition.Q, transpose(tmpCubePlot.getEdgePoints())));
+				qPlot = new CubePlot3D("", qTransformData, qTransformEdgeData, tmpCubePlot.getColorMap_Points());
 				break;
 			case SPHERE:
 				SpherePlot3D tmpSpherePlot = (SpherePlot3D) inplot;;
@@ -654,7 +656,9 @@ public class RipMathApplet extends JApplet {
 				break;
 			case CUBE:
 				CubePlot3D tmpCubePlot = (CubePlot3D) inplot;
-				rPlot = new CustomPlot3D("", rTransformData, tmpCubePlot.getColorMap_Points());
+				// special case
+				double[][] rTransformEdgeData = transpose(times(qrdecomposition.R, transpose(tmpCubePlot.getEdgePoints())));
+				rPlot = new CubePlot3D("", rTransformData, rTransformEdgeData, tmpCubePlot.getColorMap_Points());
 				break;
 			case SPHERE:
 				SpherePlot3D tmpSpherePlot = (SpherePlot3D) inplot;;
@@ -881,7 +885,21 @@ public class RipMathApplet extends JApplet {
 				break;
 			case CUBE:
 				CubePlot3D tmpCubePlot = (CubePlot3D) inplot;
-				outplot = new CustomPlot3D("", transformedData, tmpCubePlot.getColorMap_Points());
+				// special case
+				double[][] edgePoints4D = insertColumns(tmpCubePlot.getEdgePoints(), 3, one(tmpCubePlot.getEdgePoints().length));
+				// Get transformed edge points
+				double[][] transformedEdgeData;
+				if(hasVariable)
+				{
+					psr.useCustomVariables = true;
+					transformedEdgeData = transformWithVariable(edgePoints4D, transformationMatrix);
+				}
+				else
+				{
+					psr.useCustomVariables = false;
+					transformedEdgeData = transform(edgePoints4D, transformationMatrix);
+				}
+				outplot = new CubePlot3D("", transformedData, transformedEdgeData, tmpCubePlot.getColorMap_Points());
 				break;
 			case SPHERE:
 				SpherePlot3D tmpSpherePlot = (SpherePlot3D) inplot;;
