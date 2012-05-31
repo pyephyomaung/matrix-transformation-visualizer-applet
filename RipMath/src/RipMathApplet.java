@@ -22,7 +22,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -48,6 +50,8 @@ import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import javax.swing.SwingConstants;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.JTabbedPane;
 
 /**
@@ -147,7 +151,7 @@ public class RipMathApplet extends JApplet {
 		JScrollPane panelScroller = new JScrollPane(panel);
 		getContentPane().add(panelScroller, "cell 0 2 2 1,grow");
 		GridBagLayout gbl_panel = new GridBagLayout();
-		gbl_panel.columnWidths = new int[] { 200, 200, 0 };
+		gbl_panel.columnWidths = new int[] { 209, 200, 0 };
 		gbl_panel.rowHeights = new int[] { 100 };
 		gbl_panel.columnWeights = new double[] { 1.0, 1.0, 0.0 };
 		gbl_panel.rowWeights = new double[] { 1.0 };
@@ -218,6 +222,7 @@ public class RipMathApplet extends JApplet {
 		initoutplotPanel();
 	}
 	
+	private Dimension comboBox_examples_size;
 	private void initGUI_transform()
 	{	
 		panel_transform = new JPanel();
@@ -315,6 +320,62 @@ public class RipMathApplet extends JApplet {
 		button_transform = new JButton("Transform");
 		panel_transformOption.add(button_transform);
 		button_transform.setHorizontalAlignment(SwingConstants.LEFT);
+		
+		// Initialize panel for selecting examples GUI
+		panel_transformExample = new JPanel();
+		panel_transform.add(panel_transformExample, BorderLayout.NORTH);
+		panel_transformExample.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		
+		lblExamples = new JLabel("Examples: ");
+		panel_transformExample.add(lblExamples);
+		
+		comboBox_examples = new JComboBox();
+		comboBox_examples.setModel(new DefaultComboBoxModel(TransformExamples.values()));
+		comboBox_examples_size = comboBox_examples.getPreferredSize();
+		comboBox_examples_size.height = 100;
+		comboBox_examples.setPreferredSize(new Dimension(200, 20));
+		comboBox_examples.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				TransformExamples eg = (TransformExamples) comboBox_examples.getSelectedItem();
+				if(!eg.equals(TransformExamples.USER_DEFINE))
+				{
+					String[][] selected = eg.getMatrixTable();
+					for(int i = 0; i < selected.length; i++)
+					{
+						for(int j = 0; j < selected[i].length; j++)
+						{
+							TransformationMatrixTable.setValueAt(selected[i][j], i, j);
+						}
+					}
+				}
+			}
+		});
+		
+		comboBox_examples.addPopupMenuListener(new PopupMenuListener() {
+			
+			@Override
+			public void popupMenuWillBecomeVisible(PopupMenuEvent arg0) {
+				 JComboBox box = (JComboBox) arg0.getSource();
+				  Object comp = box.getUI().getAccessibleChild(box, 0);
+				    if (!(comp instanceof JPopupMenu)) return;
+				    JComponent scrollPane = (JComponent) ((JPopupMenu) comp).getComponent(0);
+				    scrollPane.setPreferredSize(comboBox_examples_size);
+				    scrollPane.setMaximumSize(comboBox_examples_size);
+			}
+			
+			@Override
+			public void popupMenuWillBecomeInvisible(PopupMenuEvent arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void popupMenuCanceled(PopupMenuEvent arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+		panel_transformExample.add(comboBox_examples);
 		button_transform.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -687,6 +748,9 @@ public class RipMathApplet extends JApplet {
 	private JTabbedPane tabbedPane;
 	private JCheckBox checkBox_QColor;
 	private JCheckBox checkBox_RColor;
+	private JPanel panel_transformExample;
+	private JLabel lblExamples;
+	private JComboBox comboBox_examples;
 	private void addAxes(Plot3DPanel plot3DPanel)
 	{
 		try
