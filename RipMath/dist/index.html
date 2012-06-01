@@ -10,28 +10,62 @@
 	<body>
 		<h2>Transformation Matrices and QR Decomposition</h2>
 		<div align="center">
-		<applet code="RipMathApplet.class" archive="RipMath.jar,jmatharray.jar,jmathplot.jar,miglayout15-swing.jar,forms-1.3.0.jar,la4j-0.2.0.jar,jME3-core.jar" width=640 height=480>
+		<applet code="RipMathApplet.class" archive="RipMath.jar,jmatharray.jar,jmathplot.jar,miglayout15-swing.jar,forms-1.3.0.jar,la4j-0.2.0.jar,jME3-core.jar" width=640 height=560>
 		</applet>
 		</div>
 
 		<article>
-			<h1>Description</h1>
-			<p>The applet illustrates the actions of linear and affine transformations from \( \mathbb{R}^3 \) to \( \mathbb{R}^3 \) and QR Decomposition of the transformation matrix.</p>
+			<h1>Overview</h1>
+			<p>The applet illustrates the actions of linear and affine transformations from \( \mathbb{R}^3 \) to \( \mathbb{R}^3 \). The linear transformation generates QR decomposition of the transformation matrix if the transformation matrix does not uses variables. </p>
 		
 			<section>
-				<h2>Linear Transformation</h2>
-				<p>\( \begin{bmatrix}x\\y\\z\end{bmatrix} \)</p>
+				<h2>Linear transformation in \( \mathbb{R}^3 \)</h2>
+				<p>Linear transformation in \( \mathbb{R}^3 \) is a mapping  \( T: \mathbb{R}^3 \to \mathbb{R}^3 \) satisfying the following conditions:
+					<ol type="1">
+						<li>\( T(\vec{u} + \vec{v}) = T(\vec{u}) + T(\vec{v}) \) for all \( \vec{u} \) and \( \vec{v} \) in \( \mathbb{R}^3 \) </li>
+						<li>\( T(c\vec{u}) = cT(\vec{u}) \) for all \( \vec{u} \) in \( \mathbb{R}^3 \)</li>				
+					</ol>				
+				</p>
+				
+				<p>Linear transformation can be written as a matrix transformation of the form \( T(\vec{u}) = A\vec{u} \) where \(A\) is a \(3 \times 3 \) matrix for transformation in \( \mathbb{R}^3 \).  
+				</br>
+				Suppose \( A = \begin{bmatrix}a & b & c\\d & e & f\\g & h & i\end{bmatrix} \) be a real number matrix, and \( \vec{u} = \begin{bmatrix}x\\y\\z\end{bmatrix} \). 
+				</br>				
+				Then, \(  T(\vec{u}) = A\vec{u} = \begin{bmatrix}a & b & c\\d & e & f\\g & h & i\end{bmatrix} \begin{bmatrix}x\\y\\z\end{bmatrix} = \begin{bmatrix}ax+by+cz\\dx+ey+fz\\gx+hy+iz\end{bmatrix}\)
+				</p>
 			</section>
 			
 			<section>
-				<h2>Affine Transformation</h2>
-				<p></p>
+				<h2>Affine Transformation in \( \mathbb{R}^3 \)</h2>
+				<p>Affine transformation is a linear transformation followed by translation.
+				</br>				
+				Translation is done by simply adding an additional vector to the linear transformation matrix and also add a dummy row, making the affine transformation matrix a \(4 \times 4\) matrix. This dummy row always look like the vector \( \begin{bmatrix}0 & 0 & 0 & 1\end{bmatrix} \) </p>
+				</br>
+				Hence, let \( A = \begin{bmatrix} a & b & c & d \\ e & f & g & h \\ i & j & k & l \\ 0 & 0 & 0 & 1 \end{bmatrix} \), and \( \vec{u} = \begin{bmatrix}x\\y\\z\\1\end{bmatrix} \), where 1 in \( \vec{u} \) is a dummy component.
+				</br>
+				Then, \(  T(\vec{u}) = A\vec{u} = \begin{bmatrix} a & b & c & d \\ e & f & g & h \\ i & j & k & l \\ 0 & 0 & 0 & 1 \end{bmatrix} \begin{bmatrix}x\\y\\z\\1\end{bmatrix} = \begin{bmatrix}ax+by+cz+d\\dx+ey+fz+g\\ix+jy+kz+l\\1\end{bmatrix}\)
+				</p>	
+			</section>
+			
+			<section>
+				<h2>Variables in Transformation Matrices</h2>
+				<p>
+					In the applet, the transformation matrix also accpts inputs with variables.
+					</br>
+					<h3>For example, the transformation matrix for spiral 45 degree around z-axis </h3>
+					<img src="screenshot_spiral45zMatrix.png" alt="Transformation matrix for 45 degree spiral around z-axis" />
+					</br>
+					<img src="screenshot_spiral45zPlot.png" alt="Plot for 45 degree spiral around z-axis" />
+				</p>			
 			</section>
 					
 			<section>
 				<h2>QR Decomposition</h2>
 				<p><b>Theorem</b></p>
-				<p><i>Let \(A\) be</i></p>
+				<p><i>Let \(A\) be \( 3 times 3 \) matrix with linearly independent columns. Then, \(A\) can be factored as \( A = QR \), where \(Q\) is a \(3 \times 3\) matrix with orthonormal columns, and \(R\) is a invertible upper triangular \(3 \times 3\) matrix. </i>
+				</br>			
+				In the QR decomposition, the matrix Q represents rotation and reflection, and the matrix R represents scaling and skewing.				
+				</p>
 			</section>
 		</article>
 	</body>
