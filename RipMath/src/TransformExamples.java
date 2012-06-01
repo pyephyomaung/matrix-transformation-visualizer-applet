@@ -28,19 +28,19 @@ public enum TransformExamples {
 			{"0", "1", "0", "0"},
 			{"0", "0", "2", "0"}}),
 			
-	ROTATION_AROUND_X_AXIS("45\u00B0 counter-clockwise Rotate around x-axis",
+	ROTATION_AROUND_X_AXIS("45\u00B0 Rotate around x-axis",
 			new String[][] {
 			{"1", "0", "0"},
 			{"0", "cos(pi/4)", "-sin(pi/4)", "0"},
 			{"0", "sin(pi/4)", "cos(pi/4)", "0"}}),		
 			
-	ROTATION_AROUND_Y_AXIS("45\u00B0 counter-clockwise Rotate around y-axis",
+	ROTATION_AROUND_Y_AXIS("45\u00B0 Rotate around y-axis",
 			new String[][] {
 			{"cos(pi/4)", "0", "sin(pi/4)", "0"},
 			{"0", "1", "0", "0"},
 			{"-sin(pi/4)", "0", "cos(pi/4)", "0"}}),
 			
-	ROTATION_AROUND_Z_AXIS("45\u00B0 counter-clockwise Rotate around z-axis",
+	ROTATION_AROUND_Z_AXIS("45\u00B0 Rotate around z-axis",
 			new String[][] {
 			{"cos(pi/4)", "-sin(pi/4)", "0", "0"},
 			{"sin(pi/4)", "cos(pi/4)", "0", "0"},

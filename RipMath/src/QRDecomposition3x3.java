@@ -51,6 +51,41 @@ public class QRDecomposition3x3 {
 			Q = qr[0].toArray();
 			R = qr[1].toArray();
 			
+			// fix diagonal of R
+			if(R[0][0] < 0)
+			{
+				double[][] fixer = identity(3);
+				fixer[0][0] = -1;
+				Q = times(Q, fixer);
+				R = times(fixer, R);
+			}
+			
+			if(R[1][1] < 0)
+			{
+				double[][] fixer = identity(3);
+				fixer[1][1] = -1;
+				Q = times(Q, fixer);
+				R = times(fixer, R);
+			}
+			
+			if(R[2][2] < 0)
+			{
+				double[][] fixer = identity(3);
+				fixer[2][2] = -1;
+				Q = times(Q, fixer);
+				R = times(fixer, R);
+			}
+			
+			// handle negative zeros
+			for(int i = 0; i < Q.length; i++)
+			{
+				for(int j = 0; j < Q[i].length; j++)
+				{
+					if(Q[i][j] == 0.0f) Q[i][j] = 0.0f;
+					if(R[i][j] == 0.0f) R[i][j] = 0.0f;
+				}
+			}
+			
 			/* Debug
 			double[][] la4j_q = qr[0].toArray();
 			double[][] la4j_r = qr[1].toArray();
