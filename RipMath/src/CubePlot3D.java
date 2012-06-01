@@ -21,10 +21,14 @@ public class CubePlot3D extends Plot {
 	public int[] indices;
 	public Color[] colorMap_Points;
 	public Color[] colorMap_Triangles;
+	public boolean useColorMap = true;
+	public Color pointColor;
+	public Color edgePointColor;
 	
 	public CubePlot3D() {
 		super("", Color.black);
 		generateCube();
+		useColorMap = true;
 	}
 	
 	public CubePlot3D(String label, double[][] _points, double[][] _edgePoints, Color[] _colorMap_Points)
@@ -33,6 +37,26 @@ public class CubePlot3D extends Plot {
 		points = _points;
 		edgePoints = _edgePoints;
 		colorMap_Points = _colorMap_Points;
+		useColorMap = true;
+	}
+	
+	/**
+	 * Constructor for cube without using color map
+	 * @param label
+	 * @param _points
+	 * @param _pointColor
+	 * @param _edgePoints
+	 * @param _edgePointColor
+	 */
+	public CubePlot3D(String label, double[][] _points, Color _pointColor, 
+			double[][] _edgePoints, Color _edgePointColor)
+	{
+		super(label, Color.black);
+		points = _points;
+		edgePoints = _edgePoints;
+		useColorMap = false;
+		pointColor = _pointColor;
+		edgePointColor = _edgePointColor;
 	}
 	
 	public void setEdgePoints(double[][] _edgePoints)
@@ -71,7 +95,8 @@ public class CubePlot3D extends Plot {
 	}
 	
 	/**
-	 * @return scattered points of a cube
+	 * Generate scattered points of a cube
+	 * @return 
 	 */
 	public void generateCube()
 	{
@@ -106,10 +131,10 @@ public class CubePlot3D extends Plot {
 						index++;
 					case 1:
 						points[index] = new double[] {x[i], tmpZ_side1, y[j]};
-						colorMap_Points[index] = Color.MAGENTA;
+						colorMap_Points[index] = Color.CYAN;
 						index++;
 						points[index] = new double[] {x[i], tmpZ_side2, y[j]};
-						colorMap_Points[index] = Color.ORANGE;
+						colorMap_Points[index] = Color.LIGHT_GRAY;
 						index++;
 					case 2:
 						points[index] = new double[] {tmpZ_side1, x[i], y[j]};
@@ -172,6 +197,12 @@ public class CubePlot3D extends Plot {
 	    edgePoints = edgePointsList.toArray(new double[edgePointsList.size()][]);
 	}
 	
+	/**
+	 * Calculate the Euclidean distance between two vectors
+	 * @param v1 vector
+	 * @param v2 vector
+	 * @return the Euclidean distance between two vectors
+	 */
 	public double dist(double[] v1, double[] v2)
 	{
 		assert(v1.length == v2.length);
@@ -209,38 +240,6 @@ public class CubePlot3D extends Plot {
 		return z;
 	}
 	
-	/*
-	private void generatePlane()
-	{
-		com.jme3.scene.shape.Quad plane = new com.jme3.scene.shape.Quad(10, 5);
-		points = JMEHelper.getVertices(plane);
-		indices = JMEHelper.getIndices(plane);
-		
-		// color mapping for points
-		colorMap_Points = new Color[points.length];
-		for(int i = 0; i < points.length; i++)
-		{
-			// color mapping is only for unit sphere
-			int R = (int) ((255/2) * (points[i][0] + 1));
-			int G = (int) ((255/2) * (points[i][1] + 1));
-			colorMap_Points[i] = new Color(0,0,128);
-		}
-		
-		// color mapping for triangles
-		colorMap_Triangles = new Color[indices.length / 3];
-		int index = 0;
-		for(int i = 0; i < indices.length / 3; i++)
-		{
-			double[] p1 = points[indices[index++]];
-			index += 2;
-			
-			// color mapping is only for unit sphere
-			int R = (int) ((255/2) * (p1[0] + 1));
-			int G = (int) ((255/2) * (p1[1] + 1));
-			colorMap_Triangles[i] = new Color(0,0,128);
-		}
-	}*/
-	
 	@Override
 	public double[] isSelected(int[] screenCoordTest, AbstractDrawer draw) {
 		// TODO Auto-generated method stub
@@ -254,18 +253,37 @@ public class CubePlot3D extends Plot {
 		
 		if(draw_dots)
 		{
-			// draw surface
-			for(int i = 0; i < points.length; i++)
+			if(useColorMap)
 			{
-				draw.setColor(colorMap_Points[i]);
-				draw.drawDot(points[i]);
+				// draw surface
+				for(int i = 0; i < points.length; i++)
+				{
+					draw.setColor(colorMap_Points[i]);
+					draw.drawDot(points[i]);
+				}
+				
+				// draw edge
+				draw.setColor(Color.BLACK);
+				for(int i = 0; i < edgePoints.length; i++)
+				{
+					draw.drawDot(edgePoints[i]);
+				}
 			}
-			
-			// draw edge
-			draw.setColor(Color.BLACK);
-			for(int i = 0; i < edgePoints.length; i++)
+			else  // without color map
 			{
-				draw.drawDot(edgePoints[i]);
+				// draw surface with mono color
+				draw.setColor(pointColor);
+				for(int i = 0; i < points.length; i++)
+				{
+					draw.drawDot(points[i]);
+				}
+				
+				// draw edge
+				draw.setColor(edgePointColor);
+				for(int i = 0; i < edgePoints.length; i++)
+				{
+					draw.drawDot(edgePoints[i]);
+				}
 			}
 		}
 		
