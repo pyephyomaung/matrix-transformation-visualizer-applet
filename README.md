@@ -1,4 +1,4 @@
-<h1>RipMath (Ripon Math)</h1>
+<h1>Matrix Transformation Visualizer Applet</h1>
 
 <div><strong>Platform:</strong> Java Applet</div>
 
